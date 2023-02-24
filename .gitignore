@@ -1,2 +1,5 @@
 src/load_wiki.py
+src/__pycache__
+src/test.py
+.gitignore
 data
