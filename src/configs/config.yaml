@@ -1,0 +1,7 @@
+q_model_name: "sentence-transformers/all-distilroberta-v1"
+d_model_name: "sentence-transformers/all-distilroberta-v1"
+dataset_path: 'C:\Users\Daniel\Documents\RAG_thesis\data\train.csv'
+batch_size: 128
+epochs: 5
+lr: 1.0E-5
+mode: "bi-encoder"
