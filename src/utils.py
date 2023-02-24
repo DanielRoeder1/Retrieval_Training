@@ -96,7 +96,7 @@ def parse_args():
     args = parser.parse_args()
 
     if args.dataset_path is not None:
-        assert args.dataset_path.endswith(".csv"), "train_file` should be a csv file"
+        assert args.dataset_path.endswith(".csv"), "train_file should be a csv file"
     else:
         raise ValueError("Need to specify a dataset path")
     
