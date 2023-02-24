@@ -1,108 +1,61 @@
-from data import  get_data_loader
 from transformers import AutoTokenizer, AutoModel
 from datasets import load_dataset
-from pytorch_metric_learning import losses, SelfSupervisedLoss
-import torch
+from pytorch_metric_learning import losses
 from torch.optim import AdamW
 
-import argparse
-
-
-def parse_args():
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument(
-        "--q_model_name", 
-        type=str, 
-        default = None, 
-        help = "Enter the HF name of the model to be used for query encoding")
-    
-    parser.add_argument(
-        "--d_model_name",
-        type=str,
-        default = None,
-        help = "Enter the HF name of the model to be used for document encoding"
-    )
-
-    parser.add_argument(
-        "--dataset_path",
-        type=str,
-        default = r'C:\Users\Daniel\Documents\RAG_thesis\data\train.csv',
-        help = "Enter the path to the dataset (csv file)"
-    )
-
-    parser.add_argument(
-        "--batch_size",
-        type=int,
-        default = 32,
-        help = "Enter the batch size"
-    )
-
-    parser.add_argument(
-        "--epochs",
-        type=int,
-        default = 5,
-        help = "Enter the number of epochs"
-    )
-
-    args = parser.parse_args()
-
-    if args.dataset_path is not None:
-        assert args.dataset_path.endswith(".csv"), "`train_file` should be a csv or a json file."
-    else:
-        raise ValueError("Need to specify a dataset path")
-    
-    return args
-
-def mean_pooling(model_output, attention_mask):
-    # from: https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2
-    token_embeddings = model_output[0] #First element of model_output contains all token embeddings
-    input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-    return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
-
+from utils import load_args
+from data import  get_data_loader
+from model import BiEncoder
 
 
 def train(args):
-    # Load the dataset
-    data = load_dataset("csv", data_files= args.dataset_path)
     # Load the query and document encoders
     q_encoder = AutoModel.from_pretrained(args.q_model_name)
-    d_encoder = AutoModel.from_pretrained(args.d_model_name)
     q_tokenizer = AutoTokenizer.from_pretrained(args.q_model_name)
-    d_tokenizer = AutoTokenizer.from_pretrained(args.d_model_name)
+    # If no document encoder is provided, construct siamese model
+    if args.d_model_name is None:
+        print("[LOG]: Using the same encoder for query and document")
+        d_encoder = q_encoder
+        d_tokenizer = q_tokenizer
+        optimizer = AdamW(q_encoder.parameters(), lr = args.lr)
+    else:
+        print("[LOG]: Using different encoders for query and document")
+        d_encoder = AutoModel.from_pretrained(args.d_model_name)
+        d_tokenizer = AutoTokenizer.from_pretrained(args.d_model_name)
+        optimizer = AdamW(list(q_encoder.parameters()) + list(d_encoder.parameters()), lr =args.lr)
+    
+    if args.mode == "bi-encoder":
+        model = BiEncoder(q_encoder, d_encoder)
+    elif args.mode == "poly-encoder":
+        pass
+    
     # Get the data loader
+    data = load_dataset("csv", data_files= args.dataset_path)
     train_loader = get_data_loader(data["train"],q_tokenizer, d_tokenizer, args.batch_size)
+    val_loader = get_data_loader(data["val"],q_tokenizer, d_tokenizer, args.batch_size)
     # Define the loss function
-    loss_func = SelfSupervisedLoss(losses.NTXentLoss(temperature = 0.07))
-    # Define the optimizer
-    optimizer = AdamW(q_encoder.parameters(), lr = 1e-5)
+    loss_func = losses.SelfSupervisedLoss(losses.NTXentLoss(temperature = 0.07))
 
 
     for epoch in range(args.epochs):
-        for i, (q_inputs, d_inputs) in enumerate(train_loader):
-            q_output = q_encoder(**q_inputs)
-            d_output = d_encoder(**d_inputs)
-
-            q_embeds = mean_pooling(q_output, q_inputs["attention_mask"])
-            d_embeds = mean_pooling(d_output, d_inputs["attention_mask"])
-
+        model.train()
+        for i, inputs in enumerate(train_loader):
+            q_embeds, d_embeds = model(inputs)
             loss = loss_func(q_embeds, d_embeds)
-
-
-
-
-
-
-
-
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+            if i % 100 == 0:
+                print(f"Epoch: {epoch}, Batch: {i}, Loss: {loss}")
+                
+        model.eval()
+        for i, inputs in enumerate(val_loader):
+            q_embeds, d_embeds = model(inputs)
+            loss = loss_func(q_embeds, d_embeds)
+            if i % 100 == 0:
+                print(f"Epoch: {epoch}, Batch: {i}, Loss: {loss}")
 
 
 if __name__ == "__main__":
-    args = parse_args()
+    args = load_args()
     train(args)
-    data = load_dataset("csv", data_files= args.dataset_path)
-    
-    print(data)
-    for i, data in enumerate(data["train"]):
-        if i % 100_000 == 0:
-            print(i)
