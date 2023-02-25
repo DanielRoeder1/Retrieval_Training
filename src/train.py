@@ -56,6 +56,7 @@ def train(args):
 
         for i, inputs in enumerate(val_loader):
             with torch.no_grad():
+                for input in inputs: input.to(device)
                 q_embeds, d_embeds = model(inputs)
                 loss = loss_func(q_embeds, d_embeds)
                 av_val.update(loss.item())
@@ -78,6 +79,7 @@ def train(args):
         av_train.reset()
         model.train()
         for i, inputs in enumerate(train_loader):
+            for input in inputs: input.to(device)
             q_embeds, d_embeds = model(inputs)
             loss = loss_func(q_embeds, d_embeds)
             loss.backward()
