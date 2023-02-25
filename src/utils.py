@@ -13,6 +13,9 @@ def load_args():
         if args.config_path == 'default':
             dir_path = os.path.dirname(__file__)
             args = load_config(os.path.join(dir_path, "configs/config.yaml"))
+        if args.config_path == 'colab':
+            dir_path = os.path.dirname(__file__)
+            args = load_config(os.path.join(dir_path, "configs/config_colab.yaml"))
         else:
             args = load_config(args.config_path)
     assert args.q_model_name is not None, "Must provide query model name, for Siamese networks only the q_model is used"
