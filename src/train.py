@@ -5,7 +5,7 @@ from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
 from torch.optim import AdamW
 import torch
 
-from utils import load_args, AverageMeter, get_eval_steps, get_time
+from utils import load_args, AverageMeter, get_eval_steps, get_time, AverageMeterDict
 from data import  get_data_loader
 from model import BiEncoder
 
@@ -43,6 +43,7 @@ def train(args):
     # Logging
     av_train = AverageMeter()
     av_val = AverageMeter()
+    av_val_acc = AverageMeterDict()
 
     eval_every = get_eval_steps(args.eval_freq,len(train_loader))
     best_val_loss = float('inf')
@@ -51,6 +52,7 @@ def train(args):
         print(f"[{get_time()}] [LOG]: Evaluating model")             
         model.eval()
         av_val.reset()
+        av_val_acc.reset()
 
         for i, inputs in enumerate(val_loader):
             with torch.no_grad():
@@ -58,12 +60,12 @@ def train(args):
                 loss = loss_func(q_embeds, d_embeds)
                 av_val.update(loss.item())
             acc_metrics = acc_calc.get_accuracy(query = q_embeds, reference = d_embeds,query_labels =  acc_labels, reference_labels = acc_labels)
+            av_val_acc.update(acc_metrics)
 
-            if i % args.print_freq == 0:
-                print(f"[{get_time()}] Epoch: {epoch}, Batch: {i}, Loss: {loss}")
-                print(f"[{get_time()}] Epoch: {epoch}, Batch: {i}, Accuracy: {acc_metrics}")
+            if i % 5== 0:
+                print(f"[{get_time()}] Epoch: {epoch}, Batch: {i}, Average Loss {av_val}, Average Metrics: {av_val_acc.get_avg()}")
 
-        print(f"Epoch: {epoch}, Average Validation Loss: {av_val}")
+        print(f"[{get_time()}] Epoch: {epoch}, Average Loss {av_val},  \n Average Metrics: {av_val_acc.get_avg()}")
         if av_val.get_avg() < best_val_loss:
             print(f"[{get_time()}] [LOG]: Saving model")
             torch.save(model.state_dict(), args.save_path)
@@ -86,7 +88,7 @@ def train(args):
             if i % args.print_freq == 0:
                 print(f"[{get_time()}] Epoch: {epoch}, Batch: {i}, Loss: {av_train}")
         
-            if i % eval_every == 0 and i != 0:
+            if i % eval_every == 0:
                 evaluate_during_train()
                 
         

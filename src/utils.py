@@ -4,6 +4,8 @@ from types import SimpleNamespace
 import os
 from datetime import datetime
 
+from collections import Counter
+
 ############### Loading args ###############
 def load_args():
     args = parse_args()
@@ -159,6 +161,20 @@ class AverageMeter:
     def __str__(self) -> str:
         return f"Avergage loss: {self.get_avg():.4f}, Current loss: {self.val:.4f}"
     
+class AverageMeterDict:
+    def __init__ (self):
+        self.reset()
+    def reset(self):
+        self.sum = Counter()
+        self.count = 0
+    def update(self, val, n=1):
+        self.sum += Counter(val)
+        self.count += n
+    def get_avg(self):
+        avg = {}
+        for k in self.sum: avg[k] =  self.sum[k] / self.count
+        return avg
+
 
 def get_eval_steps(eval_freq, total_batches):
     """
