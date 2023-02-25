@@ -1,43 +1,79 @@
 from transformers import AutoTokenizer, AutoModel
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 from pytorch_metric_learning import losses
+from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
 from torch.optim import AdamW
+import torch
 
-from utils import load_args
+from utils import load_args, AverageMeter, get_eval_steps, get_time
 from data import  get_data_loader
 from model import BiEncoder
 
 
 def train(args):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # Load the query and document encoders
     q_encoder = AutoModel.from_pretrained(args.q_model_name)
     q_tokenizer = AutoTokenizer.from_pretrained(args.q_model_name)
     # If no document encoder is provided, construct siamese model
     if args.d_model_name is None:
-        print("[LOG]: Using the same encoder for query and document")
+        print(f"[{get_time()}] [LOG]: Using the same encoder for query and document")
         d_encoder = q_encoder
         d_tokenizer = q_tokenizer
         optimizer = AdamW(q_encoder.parameters(), lr = args.lr)
     else:
-        print("[LOG]: Using different encoders for query and document")
+        print(f"[{get_time()}] [LOG]: Using different encoders for query and document")
         d_encoder = AutoModel.from_pretrained(args.d_model_name)
         d_tokenizer = AutoTokenizer.from_pretrained(args.d_model_name)
         optimizer = AdamW(list(q_encoder.parameters()) + list(d_encoder.parameters()), lr =args.lr)
-    
+    # Set model type
     if args.mode == "bi-encoder":
-        model = BiEncoder(q_encoder, d_encoder)
+        model = BiEncoder(q_encoder, d_encoder).to(device)
     elif args.mode == "poly-encoder":
         pass
-    
     # Get the data loader
-    data = load_dataset("csv", data_files= args.dataset_path)
+    #data = load_dataset("csv", data_files= args.dataset_path)
+    data = load_from_disk(args.dataset_path)
     train_loader = get_data_loader(data["train"],q_tokenizer, d_tokenizer, args.batch_size)
-    val_loader = get_data_loader(data["val"],q_tokenizer, d_tokenizer, args.batch_size)
+    val_loader = get_data_loader(data["test"],q_tokenizer, d_tokenizer, args.batch_size)
     # Define the loss function
     loss_func = losses.SelfSupervisedLoss(losses.NTXentLoss(temperature = 0.07))
+    acc_calc = AccuracyCalculator(k = 20)
+    acc_labels = torch.arange(args.batch_size).to(device)
+    # Logging
+    av_train = AverageMeter()
+    av_val = AverageMeter()
+
+    eval_every = get_eval_steps(args.eval_freq,len(train_loader))
+    best_val_loss = float('inf')
+
+    def evaluate_during_train():
+        print(f"[{get_time()}] [LOG]: Evaluating model")             
+        model.eval()
+        av_val.reset()
+
+        for i, inputs in enumerate(val_loader):
+            with torch.no_grad():
+                q_embeds, d_embeds = model(inputs)
+                loss = loss_func(q_embeds, d_embeds)
+                av_val.update(loss.item())
+            acc_metrics = acc_calc.get_accuracy(query = q_embeds, reference = d_embeds,query_labels =  acc_labels, reference_labels = acc_labels)
+
+            if i % args.print_freq == 0:
+                print(f"[{get_time()}] Epoch: {epoch}, Batch: {i}, Loss: {loss}")
+                print(f"[{get_time()}] Epoch: {epoch}, Batch: {i}, Accuracy: {acc_metrics}")
+
+        print(f"Epoch: {epoch}, Average Validation Loss: {av_val}")
+        if av_val.get_avg() < best_val_loss:
+            print(f"[{get_time()}] [LOG]: Saving model")
+            torch.save(model.state_dict(), args.save_path)
+            best_val_loss = av_val.avg
 
 
+    # Training loop
+    print(f"[{get_time()}] [LOG]: Starting training")
     for epoch in range(args.epochs):
+        av_train.reset()
         model.train()
         for i, inputs in enumerate(train_loader):
             q_embeds, d_embeds = model(inputs)
@@ -45,17 +81,15 @@ def train(args):
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
-            if i % 100 == 0:
-                print(f"Epoch: {epoch}, Batch: {i}, Loss: {loss}")
+
+            av_train.update(loss.item())
+            if i % args.print_freq == 0:
+                print(f"[{get_time()}] Epoch: {epoch}, Batch: {i}, Loss: {av_train}")
+        
+            if i % eval_every == 0 and i != 0:
+                evaluate_during_train()
                 
-        model.eval()
-        for i, inputs in enumerate(val_loader):
-            q_embeds, d_embeds = model(inputs)
-            loss = loss_func(q_embeds, d_embeds)
-            if i % 100 == 0:
-                print(f"Epoch: {epoch}, Batch: {i}, Loss: {loss}")
-
-
+        
 if __name__ == "__main__":
     args = load_args()
     train(args)
