@@ -2,6 +2,7 @@ import argparse
 import yaml
 from types import SimpleNamespace
 import os
+from datetime import datetime
 
 ############### Loading args ###############
 def load_args():
@@ -93,6 +94,27 @@ def parse_args():
         help = "Enter the mode of the model, either 'bi-encoder' or 'poly-encoder'"
     )
 
+    parser.add_argument(
+        "--save_path",
+        type=str,
+        default = None,
+        help = "Enter the path to save the model"
+    )
+
+    parser.add_argument(
+        "--print_freq",
+        type=int,
+        default = 100,
+        help = "Enter the frequency of printing the loss"
+    )
+
+    parser.add_argument(
+        "--eval_freq",
+        type=str,
+        default = "epoch",
+        help = "Enter the frequency of evaluation, either 'epoch' or a number of steps, or a float between 0 and 1"
+    )
+
     args = parser.parse_args()
 
     if args.dataset_path is not None:
@@ -100,5 +122,56 @@ def parse_args():
     else:
         raise ValueError("Need to specify a dataset path")
     
+    args.eval_freq = determine_type(args.eval_freq)
+    
     return args
 ############################################
+
+def determine_type(str_in):
+    """
+    eval_freq argument can be either a number of steps, a float between 0 and 1, or "epoch"
+    """
+    if str_in.isdigit():
+        return int(str_in)
+    elif str_in.replace('.', '', 1).isdigit():
+        return float(str_in)
+    else:
+        return str_in
+
+class AverageMeter:
+    """Computes and stores the average and current value"""
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val
+        self.count += n
+
+    def get_avg(self):
+        return self.sum / self.count
+    
+    def __str__(self) -> str:
+        return f"Avergage loss: {self.get_avg():.4f}, Current loss: {self.val:.4f}"
+    
+
+def get_eval_steps(eval_freq, total_batches):
+    """
+    Determine number of steps that trigger evaluatiuon
+    """ 
+    if eval_freq == "epoch":
+        eval_steps = total_batches
+    elif isinstance(eval_freq, int):
+        eval_steps = eval_freq
+    elif isinstance(eval_freq, float):
+        eval_steps = int(total_batches * eval_freq)
+    
+    return eval_steps
+
+def get_time():
+    return datetime.now().strftime("%H:%M:%S")
