@@ -24,5 +24,5 @@ class CrossBatchMemoryWrapper():
         all_enc = torch.cat([q_embeds, d_embeds], dim=0)
         labels, enqueue_mask = self.get_labels(q_embeds.shape[0])
         self.prev_max_label = labels.max()
-        loss = self.loss_fn(all_enc, labels, enqueue_mask)
+        loss = self.loss_fn(embeddings = all_enc, labels = labels, enqueue_mask = enqueue_mask)
         return loss
