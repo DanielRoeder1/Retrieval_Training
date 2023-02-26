@@ -5,6 +5,10 @@ from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
 from torch.optim import AdamW
 import torch
 
+# Mixed precision training
+from torch.cuda.amp import GradScaler
+from torch import autocast
+
 from utils import load_args, AverageMeter, get_eval_steps, get_time, AverageMeterDict
 from data import  get_data_loader
 from model import BiEncoder
@@ -47,6 +51,8 @@ def train(args):
 
     eval_every = get_eval_steps(args.eval_freq,len(train_loader))
     best_val_loss = float('inf')
+    # Mixed precision training - Scaler
+    scaler = GradScaler()
 
     def evaluate_during_train():
         print(f"[{get_time()}] [LOG]: Evaluating model")             
@@ -77,11 +83,14 @@ def train(args):
         model.train()
         for i, inputs in enumerate(train_loader):
             for input in inputs: input.to(device)
-            q_embeds, d_embeds = model(inputs)
-            loss = loss_func(q_embeds, d_embeds)
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
+            with autocast(device_type='cuda', dtype=torch.float16):
+                q_embeds, d_embeds = model(inputs)
+                loss = loss_func(q_embeds, d_embeds)
+
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.zero_grad(set_to_none=True)
 
             av_train.update(loss.item())
             if i % args.print_freq == 0:
