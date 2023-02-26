@@ -120,6 +120,13 @@ def parse_args():
         help = "Enter the frequency of evaluation, either 'epoch' or a number of steps, or a float between 0 and 1"
     )
 
+    parser.add_argument(
+        "--cross_batch_memory",
+        type=bool,
+        default = False,
+        help = "Enter whether to use cross batch memory"
+    )
+
     args = parser.parse_args()
 
     if args.dataset_path is not None:

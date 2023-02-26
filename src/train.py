@@ -12,6 +12,7 @@ from torch import autocast
 from utils import load_args, AverageMeter, get_eval_steps, get_time, AverageMeterDict
 from data import  get_data_loader
 from model import BiEncoder
+from loss import CrossBatchMemoryWrapper
 
 
 def train(args):
@@ -40,16 +41,20 @@ def train(args):
     data = load_from_disk(args.dataset_path)
     train_loader = get_data_loader(data["train"],q_tokenizer, d_tokenizer, args.batch_size)
     val_loader = get_data_loader(data["test"],q_tokenizer, d_tokenizer, args.batch_size)
-    # Define the loss function
-    loss_func = losses.SelfSupervisedLoss(losses.NTXentLoss(temperature = 0.07))
+    # Set the loss function
+    if args.cross_batch_memory:
+        loss_func = CrossBatchMemoryWrapper(q_encoder.config.hidden_size, device, memory_size=400)
+    else:
+        loss_func = losses.SelfSupervisedLoss(losses.NTXentLoss(temperature = 0.07))
+    # Accuracy metrics for evaluation
     acc_calc = AccuracyCalculator()
     acc_labels = torch.arange(args.batch_size).to(device)
     # Logging
     av_train = AverageMeter()
     av_val = AverageMeter()
     av_val_acc = AverageMeterDict()
-
-    eval_every = get_eval_steps(args.eval_freq,len(train_loader))
+    num_batches = len(train_loader)
+    eval_every = get_eval_steps(args.eval_freq,num_batches)
     best_val_loss = float('inf')
     # Mixed precision training - Scaler
     scaler = GradScaler()
@@ -94,7 +99,7 @@ def train(args):
 
             av_train.update(loss.item())
             if i % args.print_freq == 0:
-                print(f"[{get_time()}] Epoch: {epoch}, Batch: {i}, Loss: {av_train}")
+                print(f"[{get_time()}] [{epoch}/{args.epochs}, {i}/{num_batches}], Loss: {av_train}")
         
             if i % eval_every == 0 and i != 0:
                 evaluate_during_train()

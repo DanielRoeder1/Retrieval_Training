@@ -8,3 +8,4 @@ lr: 1.0E-5
 mode: "bi-encoder"
 print_freq: 5
 eval_freq: "epoch"
+cross_batch_memory: True
