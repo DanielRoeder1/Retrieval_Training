@@ -6,12 +6,14 @@ def transform_func(example):
     """
     Samples a subsequence from the document and uses it as the query
     """
-    doc_text = example["text"][0]
-    split_text = doc_text.split()
-    seq_len = min(random.randint(len(split_text)//10, len(split_text)//5), 50)
-    seq_begin = random.randint(0,len(split_text)- seq_len)
-    query_text = " ".join(split_text[seq_begin:seq_begin+seq_len]) 
-    return {"query": [query_text], "doc":[doc_text]}
+    def sample_text(t):
+      split_text = t.split()
+      seq_len = min(random.randint(len(split_text)//10, len(split_text)//5), 50)
+      seq_begin = random.randint(0,len(split_text)- seq_len)
+      return " ".join(split_text[seq_begin:seq_begin+seq_len]) 
+
+    query_text = [sample_text(t) for t in example["text"]]
+    return {"query": query_text, "doc": example["text"]}
 
 # Faster compared to using partial
 # https://stackoverflow.com/questions/57822851/performant-way-to-partially-apply-in-python
