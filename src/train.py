@@ -38,7 +38,7 @@ def train(args):
     val_loader = get_data_loader(data["test"],q_tokenizer, d_tokenizer, args.batch_size)
     # Define the loss function
     loss_func = losses.SelfSupervisedLoss(losses.NTXentLoss(temperature = 0.07))
-    acc_calc = AccuracyCalculator(k = 20)
+    acc_calc = AccuracyCalculator()
     acc_labels = torch.arange(args.batch_size).to(device)
     # Logging
     av_train = AverageMeter()
@@ -62,9 +62,6 @@ def train(args):
                 av_val.update(loss.item())
             acc_metrics = acc_calc.get_accuracy(query = q_embeds, reference = d_embeds,query_labels =  acc_labels, reference_labels = acc_labels)
             av_val_acc.update(acc_metrics)
-
-            if i % 5== 0:
-                print(f"[{get_time()}] Epoch: {epoch}, Batch: {i}, Average Loss {av_val}, Average Metrics: {av_val_acc.get_avg()}")
 
         print(f"[{get_time()}] Epoch: {epoch}, Average Loss {av_val},  \n Average Metrics: {av_val_acc.get_avg()}")
         if av_val.get_avg() < best_val_loss:
@@ -90,7 +87,7 @@ def train(args):
             if i % args.print_freq == 0:
                 print(f"[{get_time()}] Epoch: {epoch}, Batch: {i}, Loss: {av_train}")
         
-            if i % eval_every == 0:
+            if i % eval_every == 0 and i != 0:
                 evaluate_during_train()
                 
         

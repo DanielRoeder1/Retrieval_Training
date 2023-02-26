@@ -13,7 +13,7 @@ def load_args():
         if args.config_path == 'default':
             dir_path = os.path.dirname(__file__)
             args = load_config(os.path.join(dir_path, "configs/config.yaml"))
-        if args.config_path == 'colab':
+        elif args.config_path == 'colab':
             dir_path = os.path.dirname(__file__)
             args = load_config(os.path.join(dir_path, "configs/config_colab.yaml"))
         else:
