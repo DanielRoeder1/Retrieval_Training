@@ -9,3 +9,4 @@ mode: "bi-encoder"
 print_freq: 5
 eval_freq: "epoch"
 cross_batch_memory: True
+accumulation_steps: 5

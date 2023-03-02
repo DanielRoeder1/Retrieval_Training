@@ -31,11 +31,13 @@ def train(args):
         d_encoder = AutoModel.from_pretrained(args.d_model_name)
         d_tokenizer = AutoTokenizer.from_pretrained(args.d_model_name)
         optimizer = AdamW(list(q_encoder.parameters()) + list(d_encoder.parameters()), lr =args.lr)
+    assert d_encoder.config.hidden_size == q_encoder.config.hidden_size, "Query and document encoders must have the same hidden size"
     # Set model type
     if args.mode == "bi-encoder":
         model = BiEncoder(q_encoder, d_encoder).to(device)
     elif args.mode == "poly-encoder":
         pass
+    assert args.mode in ["bi-encoder", "poly-encoder"], "Invalid model type"
     # Get the data loader
     #data = load_dataset("csv", data_files= args.dataset_path)
     data = load_from_disk(args.dataset_path)
@@ -50,6 +52,8 @@ def train(args):
     acc_calc = AccuracyCalculator()
     acc_labels = torch.arange(args.batch_size).to(device)
     # Logging
+    if args.accumulation_steps < 1: args.accumulation_steps = 1
+    print_every = args.print_freq  * args._accumulation_steps
     av_train = AverageMeter()
     av_val = AverageMeter()
     av_val_acc = AverageMeterDict()
@@ -91,17 +95,19 @@ def train(args):
             with autocast(device_type='cuda', dtype=torch.float16):
                 q_embeds, d_embeds = model(inputs)
                 loss = loss_func(q_embeds, d_embeds)
-
+                loss = loss / args.accumulation_steps
+            
             scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
-            optimizer.zero_grad(set_to_none=True)
+            if (i + 1) % args.accumulation_steps == 0:
+                scaler.step(optimizer)
+                scaler.update()
+                optimizer.zero_grad(set_to_none=True)
 
             av_train.update(loss.item())
-            if i % args.print_freq == 0:
-                print(f"[{get_time()}] [{epoch}/{args.epochs}, {i}/{num_batches}], Loss: {av_train}")
+            if i % (print_every)== 0:
+                print(f"[{get_time()}] [{epoch}/{args.epochs}, {i // args.acumulation_steps}/{num_batches // args.accumulation_steps}], Loss: {av_train}")
         
-            if i % eval_every == 0 and i != 0:
+            if (i+1) % eval_every == 0:
                 evaluate_during_train()
                 
         
