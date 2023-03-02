@@ -5,10 +5,13 @@ class CrossBatchMemoryWrapper():
     """
     Allows CrossBatchMemory to be called like SelfSupervisedLoss
     """
-    def __init__(self, embedding_size,device,  memory_size=400):
+    def __init__(self, embedding_size,device,warmup, memory_size=400):
         self.loss_fn = losses.CrossBatchMemory(losses.NTXentLoss(temperature=0.07), embedding_size, memory_size=memory_size, miner=None)
         self.prev_max_label = -1
         self.device = device
+
+        self.warmup = warmup
+        self.iteration = 0
 
     
     def get_labels(self, batch_size):
@@ -25,4 +28,7 @@ class CrossBatchMemoryWrapper():
         labels, enqueue_mask = self.get_labels(q_embeds.shape[0])
         self.prev_max_label = labels.max()
         loss = self.loss_fn(embeddings = all_enc, labels = labels, enqueue_mask = enqueue_mask)
+        if self.iteration < self.warmup:
+            self.loss_fn.reset_memory()
+            self.iteration += 1
         return loss
