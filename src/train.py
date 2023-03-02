@@ -44,16 +44,16 @@ def train(args):
     train_loader = get_data_loader(data["train"],q_tokenizer, d_tokenizer, args.batch_size)
     val_loader = get_data_loader(data["test"],q_tokenizer, d_tokenizer, args.batch_size)
     # Set the loss function
-    if args.cross_batch_memory:
-        loss_func = CrossBatchMemoryWrapper(q_encoder.config.hidden_size, device, memory_size=400)
+    if args.accumulation_steps < 1: args.accumulation_steps = 1
+    if args.cross_batch_memory.use:
+        loss_func = CrossBatchMemoryWrapper(q_encoder.config.hidden_size, device, memory_size=args.cross_batch_memory.buffer_size, warmup = args.cross_batch_memory.warmup * args.accumulation_steps)
     else:
         loss_func = losses.SelfSupervisedLoss(losses.NTXentLoss(temperature = 0.07))
     # Accuracy metrics for evaluation
     acc_calc = AccuracyCalculator()
     acc_labels = torch.arange(args.batch_size).to(device)
     # Logging
-    if args.accumulation_steps < 1: args.accumulation_steps = 1
-    print_every = args.print_freq  * args._accumulation_steps
+    print_every = args.print_freq  * args.accumulation_steps
     av_train = AverageMeter()
     av_val = AverageMeter()
     av_val_acc = AverageMeterDict()
@@ -105,7 +105,7 @@ def train(args):
 
             av_train.update(loss.item())
             if i % (print_every)== 0:
-                print(f"[{get_time()}] [{epoch}/{args.epochs}, {i // args.acumulation_steps}/{num_batches // args.accumulation_steps}], Loss: {av_train}")
+                print(f"[{get_time()}] [{epoch}/{args.epochs}, {i // args.accumulation_steps}/{num_batches // args.accumulation_steps}], Loss: {av_train}")
         
             if (i+1) % eval_every == 0:
                 evaluate_during_train()
