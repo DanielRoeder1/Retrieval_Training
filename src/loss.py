@@ -1,17 +1,21 @@
 import torch
 from pytorch_metric_learning import losses
+from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
 
 class CrossBatchMemoryWrapper():
     """
     Allows CrossBatchMemory to be called like SelfSupervisedLoss
     """
-    def __init__(self, embedding_size,device,warmup, memory_size=400):
+    def __init__(self, embedding_size,device,warmup,acc_steps, memory_size=400):
         self.loss_fn = losses.CrossBatchMemory(losses.NTXentLoss(temperature=0.07), embedding_size, memory_size=memory_size, miner=None)
         self.prev_max_label = -1
         self.device = device
 
-        self.warmup = warmup
-        self.iteration = 0
+        # Take gradient accumulation into account:
+        # While we are within the warmup period, build the buffer for acc_steps as no model updates are done
+        self.warmup = warmup *acc_steps
+        self.iteration = 1
+        self.accumulation_steps = acc_steps
 
     
     def get_labels(self, batch_size):
@@ -28,7 +32,21 @@ class CrossBatchMemoryWrapper():
         labels, enqueue_mask = self.get_labels(q_embeds.shape[0])
         self.prev_max_label = labels.max()
         loss = self.loss_fn(embeddings = all_enc, labels = labels, enqueue_mask = enqueue_mask)
-        if self.iteration < self.warmup:
-            self.loss_fn.reset_memory()
-            self.iteration += 1
+        if self.iteration < self.warmup and self.iteration % self.accumulation_steps == 0:
+            self.loss_fn.reset_queue()
+        self.iteration += 1
         return loss
+    
+class CustomAccuracyCalc(AccuracyCalculator):
+    """
+    Added function for calculating the average rank of the first positive example
+    """
+    def calculate_avg_rank_first(self, knn_labels, query_labels, **kwargs):
+        q_labels =  query_labels[:, None]
+        is_same_label= torch.eq(q_labels, knn_labels)*1
+        zero_remove_mask = is_same_label.sum(-1) == 0
+        indices = torch.argmax(is_same_label, 1) + 1.0
+        return torch.mean(indices[~zero_remove_mask]).item()
+
+    def requires_knn(self):
+        return super().requires_knn() + ["avg_rank_first"] 
