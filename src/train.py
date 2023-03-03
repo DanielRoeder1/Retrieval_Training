@@ -1,9 +1,9 @@
 from transformers import AutoTokenizer, AutoModel
 from datasets import load_dataset, load_from_disk
 from pytorch_metric_learning import losses
-from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
 from torch.optim import AdamW
 import torch
+import wandb
 
 # Mixed precision training
 from torch.cuda.amp import GradScaler
@@ -12,10 +12,13 @@ from torch import autocast
 from utils import load_args, AverageMeter, get_eval_steps, get_time, AverageMeterDict
 from data import  get_data_loader
 from model import BiEncoder
-from loss import CrossBatchMemoryWrapper
+from loss import CrossBatchMemoryWrapper, CustomAccuracyCalc
 
 
 def train(args):
+    if args.wandb.use:
+        wandb.login(args.wandb.api_key)
+        wandb.init(args.wandb.project_name, config=args.config_path)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # Load the query and document encoders
     q_encoder = AutoModel.from_pretrained(args.q_model_name)
@@ -46,11 +49,11 @@ def train(args):
     # Set the loss function
     if args.accumulation_steps < 1: args.accumulation_steps = 1
     if args.cross_batch_memory.use:
-        loss_func = CrossBatchMemoryWrapper(q_encoder.config.hidden_size, device, memory_size=args.cross_batch_memory.buffer_size, warmup = args.cross_batch_memory.warmup * args.accumulation_steps)
+        loss_func = CrossBatchMemoryWrapper(q_encoder.config.hidden_size, device, memory_size=args.cross_batch_memory.buffer_size, warmup = args.cross_batch_memory.warmup, acc_steps= args.accumulation_steps)
     else:
         loss_func = losses.SelfSupervisedLoss(losses.NTXentLoss(temperature = 0.07))
     # Accuracy metrics for evaluation
-    acc_calc = AccuracyCalculator()
+    acc_calc = CustomAccuracyCalc()
     acc_labels = torch.arange(args.batch_size).to(device)
     # Logging
     print_every = args.print_freq  * args.accumulation_steps

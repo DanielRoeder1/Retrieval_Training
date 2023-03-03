@@ -9,20 +9,31 @@ from collections import Counter
 ############### Loading args ###############
 def load_args():
     args = parse_args()
+    # Keep config_path in args for wandb config
     if args.config_path is not None:
+        dir_path = os.path.dirname(__file__)
         if args.config_path == 'default':
-            dir_path = os.path.dirname(__file__)
-            args = load_config(os.path.join(dir_path, "configs/config.yaml"))
+            args.config_path = os.path.join(dir_path, "configs/config.yaml")
         elif args.config_path == 'colab':
-            dir_path = os.path.dirname(__file__)
-            args = load_config(os.path.join(dir_path, "configs/config_colab.yaml"))
-        else:
-            args = load_config(args.config_path)
+            args.config_path = os.path.join(dir_path, "configs/config_colab.yaml")
+        
+        tmp = args.config_path
+        args = load_config(args.config_path)
+        args.config_path = tmp
+    
     assert args.q_model_name is not None, "Must provide query model name, for Siamese networks only the q_model is used"
+    args.eval_freq = determine_type(args.eval_freq)
+
+    # Get wandb login
+    if args.wandb.use:
+            if args.wandb.credential_path == 'default':
+                args.wandb.credential_path = os.path.join(dir_path, "configs/wandb_key.txt")
+            with open(args.wandb.credential_path, 'r') as f:
+                args.wandb.api_key = f.read()
     return args
 
 
-# YAML -> Namespace
+# YAML -> SimpleNamespace
 # from: https://gist.github.com/jdthorpe/313cafc6bdaedfbc7d8c32fcef799fbf
 def load_config(config_path):
     with open(config_path, 'r') as f:
@@ -133,8 +144,6 @@ def parse_args():
         assert args.dataset_path.endswith(".csv"), "train_file should be a csv file"
     else:
         raise ValueError("Need to specify a dataset path")
-    
-    args.eval_freq = determine_type(args.eval_freq)
     
     return args
 ############################################
