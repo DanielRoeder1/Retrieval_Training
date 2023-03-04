@@ -40,6 +40,7 @@ def train(args):
         model = BiEncoder(q_encoder, d_encoder).to(device)
     elif args.mode == "poly-encoder":
         pass
+    model.train()
     assert args.mode in ["bi-encoder", "poly-encoder"], "Invalid model type"
     # Get the data loader
     #data = load_dataset("csv", data_files= args.dataset_path)
@@ -92,7 +93,6 @@ def train(args):
     print(f"[{get_time()}] [LOG]: Starting training")
     for epoch in range(args.epochs):
         av_train.reset()
-        model.train()
         for i, inputs in enumerate(train_loader):
             for input in inputs: input.to(device)
             with autocast(device_type='cuda', dtype=torch.float16):
@@ -108,10 +108,14 @@ def train(args):
 
             av_train.update(loss.item())
             if i % (print_every)== 0:
+                wandb.log({"Train Loss": av_train.get_avg()})
+                acc_metrics = acc_calc.get_accuracy(query = q_embeds, reference = d_embeds,query_labels =  acc_labels, reference_labels = acc_labels)
+                wandb.log(acc_metrics)
                 print(f"[{get_time()}] [{epoch}/{args.epochs}, {i // args.accumulation_steps}/{num_batches // args.accumulation_steps}], Loss: {av_train}")
         
-            if (i+1) % eval_every == 0:
+            if (i + 1) % eval_every == 0:
                 evaluate_during_train()
+                model.train()
                 
         
 if __name__ == "__main__":
