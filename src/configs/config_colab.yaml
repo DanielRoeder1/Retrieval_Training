@@ -1,18 +1,21 @@
-q_model_name: "sentence-transformers/all-distilroberta-v1"
-d_model_name: "sentence-transformers/all-distilroberta-v1"
-dataset_path: '/content/drive/MyDrive/Master_Thesis/train_data/traint_test_dataset'
-save_path: '/content/sample_data'
-batch_size: 24
-epochs: 5
-lr: 1.0E-5
-mode: "bi-encoder"
-print_freq: 5
-eval_freq: "epoch"
+paths:
+  q_model_name: "sentence-transformers/all-distilroberta-v1"
+  d_model_name: "sentence-transformers/all-distilroberta-v1"
+  dataset_path: '/content/drive/MyDrive/Master_Thesis/train_data/traint_test_dataset'
+  save_path: '/content/sample_data'
+training:
+  batch_size: 24
+  epochs: 5
+  lr: 1.0E-5
+  mode: "bi-encoder"
+  eval_freq: "epoch"
+  accumulation_steps: 5
+logging:
+  print_freq: 5
 cross_batch_memory:
   use: True
   buffer_size: 400
   warmup: 1000
-accumulation_steps: 5
 wandb:
   use: True
   credential_path: 'default'
