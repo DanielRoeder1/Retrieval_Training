@@ -30,6 +30,9 @@ def load_args():
                 args.wandb.credential_path = os.path.join(dir_path, "configs/wandb_key.txt")
             with open(args.wandb.credential_path, 'r') as f:
                 args.wandb.api_key = f.read()
+            # Have config in dict format again for wandb
+            with open(args.config_path, 'r') as f:
+                args.wandb_config = yaml.save_load(f)
     return args
 
 
