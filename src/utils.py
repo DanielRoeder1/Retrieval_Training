@@ -21,8 +21,8 @@ def load_args():
         args = load_config(args.config_path)
         args.config_path = tmp
     
-    assert args.q_model_name is not None, "Must provide query model name, for Siamese networks only the q_model is used"
-    args.eval_freq = determine_type(args.eval_freq)
+    assert args.paths.q_model_name is not None, "Must provide query model name, for Siamese networks only the q_model is used"
+    args.training.eval_freq = determine_type(args.training.eval_freq)
 
     # Get wandb login
     if args.wandb.use:
@@ -32,7 +32,7 @@ def load_args():
                 args.wandb.api_key = f.read()
             # Have config in dict format again for wandb
             with open(args.config_path, 'r') as f:
-                args.wandb_config = yaml.save_load(f)
+                args.wandb_config = yaml.safe_load(f)
     return args
 
 

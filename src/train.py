@@ -18,7 +18,7 @@ from loss import CrossBatchMemoryWrapper, CustomAccuracyCalc
 def train(args):
     if args.wandb.use:
         wandb.login(key = args.wandb.api_key)
-        wandb.init(args.wandb.project_name, config=args.config_path)
+        wandb.init(args.wandb.project_name, config=args.wandb_config)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # Load the query and document encoders
     q_encoder = AutoModel.from_pretrained(args.paths.q_model_name)
@@ -107,11 +107,9 @@ def train(args):
                 optimizer.zero_grad(set_to_none=True)
 
             av_train.update(loss.item())
-            if i % (print_every)== 0:
+            if (i + 1) % print_every== 0:
                 wandb.log({"Train Loss": av_train.get_avg()})
-                acc_metrics = acc_calc.get_accuracy(query = q_embeds, reference = d_embeds,query_labels =  acc_labels, reference_labels = acc_labels)
-                wandb.log(acc_metrics)
-                print(f"[{get_time()}] [{epoch}/{args.training.epochs}, {i // args.training.accumulation_steps}/{num_batches // args.training.accumulation_steps}], Loss: {av_train}")
+                print(f"[{get_time()}] [{epoch}/{args.training.epochs}, {i+1 // args.training.accumulation_steps}/{num_batches // args.training.accumulation_steps}], Loss: {av_train}")
         
             if (i + 1) % eval_every == 0:
                 evaluate_during_train()
