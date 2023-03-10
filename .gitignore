@@ -4,3 +4,4 @@ src/test.py
 .gitignore
 data
 src/configs/wandb_key.txt
+src/text.ipynb
