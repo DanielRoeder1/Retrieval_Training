@@ -10,9 +10,10 @@ from torch.cuda.amp import GradScaler
 from torch import autocast
 
 from utils import load_args, AverageMeter, get_eval_steps, get_time, AverageMeterDict
-from data import  get_data_loader
+#from data import  get_data_loader
+from SectionSampling import get_data_loader
 from model import BiEncoder
-from loss import CrossBatchMemoryWrapper, CustomAccuracyCalc
+from loss import CrossBatchMemoryWrapper, CustomAccuracyCalc, LabelLossWrapper
 
 
 def train(args):
@@ -21,18 +22,18 @@ def train(args):
         wandb.init(args.wandb.project_name, config=args.wandb_config)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # Load the query and document encoders
-    q_encoder = AutoModel.from_pretrained(args.paths.q_model_name)
-    q_tokenizer = AutoTokenizer.from_pretrained(args.paths.q_model_name)
+    q_encoder = AutoModel.from_pretrained(args.q_model.path)
+    q_tokenizer = AutoTokenizer.from_pretrained(args.q_model.path)
     # If no document encoder is provided, construct siamese model
-    if args.paths.d_model_name is None:
+    if args.d_model.path is None:
         print(f"[{get_time()}] [LOG]: Using the same encoder for query and document")
         d_encoder = q_encoder
         d_tokenizer = q_tokenizer
         optimizer = AdamW(q_encoder.parameters(), lr = args.training.lr)
     else:
         print(f"[{get_time()}] [LOG]: Using different encoders for query and document")
-        d_encoder = AutoModel.from_pretrained(args.paths.d_model_name)
-        d_tokenizer = AutoTokenizer.from_pretrained(args.paths.d_model_name)
+        d_encoder = AutoModel.from_pretrained(args.d_model.path)
+        d_tokenizer = AutoTokenizer.from_pretrained(args.d_model.path)
         optimizer = AdamW(list(q_encoder.parameters()) + list(d_encoder.parameters()), lr =args.training.lr)
     assert d_encoder.config.hidden_size == q_encoder.config.hidden_size, "Query and document encoders must have the same hidden size"
     # Set model type
@@ -50,9 +51,9 @@ def train(args):
     # Set the loss function
     if args.training.accumulation_steps < 1: args.training.accumulation_steps = 1
     if args.cross_batch_memory.use:
-        loss_func = CrossBatchMemoryWrapper(q_encoder.config.hidden_size, device, memory_size=args.cross_batch_memory.buffer_size, warmup = args.cross_batch_memory.warmup, acc_steps= args.training.accumulation_steps)
+        loss_func = CrossBatchMemoryWrapper(q_encoder.config.hidden_size, device, memory_size=args.cross_batch_memory.buffer_size, warmup = args.cross_batch_memory.warmup, acc_steps= args.training.accumulation_steps, num_pos =args.training.num_pos)
     else:
-        loss_func = losses.SelfSupervisedLoss(losses.NTXentLoss(temperature = 0.07))
+        loss_func = LabelLossWrapper(losses.NTXentLoss(temperature = 0.07), num_pos = args.training.num_pos, device = device)
     # Accuracy metrics for evaluation
     acc_calc = CustomAccuracyCalc()
     acc_labels = torch.arange(args.training.batch_size).to(device)
