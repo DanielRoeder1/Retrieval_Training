@@ -6,7 +6,7 @@ class CrossBatchMemoryWrapper():
     """
     Allows CrossBatchMemory to be called like SelfSupervisedLoss
     """
-    def __init__(self, embedding_size,device,warmup,acc_steps, memory_size=400):
+    def __init__(self, embedding_size,device,warmup,acc_steps, num_pos, memory_size=400):
         self.loss_fn = losses.CrossBatchMemory(losses.NTXentLoss(temperature=0.07), embedding_size, memory_size=memory_size, miner=None)
         self.prev_max_label = -1
         self.device = device
@@ -16,11 +16,12 @@ class CrossBatchMemoryWrapper():
         self.warmup = warmup *acc_steps
         self.iteration = 1
         self.accumulation_steps = acc_steps
+        self.num_pos = num_pos
 
     
     def get_labels(self, batch_size):
         labels = torch.arange(0, batch_size)
-        labels = torch.cat((labels, labels)).to(self.device)
+        labels = torch.cat((labels, labels.repeat_interleave(self.num_pos))).to(self.device)
         labels += self.prev_max_label+1
         enqueue_mask = torch.zeros(len(labels)).bool()
         enqueue_mask[batch_size:] = True
@@ -36,6 +37,23 @@ class CrossBatchMemoryWrapper():
             self.loss_fn.reset_queue()
         self.iteration += 1
         return loss
+    
+
+class LabelLossWrapper:
+    """
+    Similar to SelfSupervisedLoss but allows for multiple positive samples per document
+    """
+    def __init__(self, loss_fn, num_pos,device):
+        self.loss = loss_fn
+        self.num_pos = num_pos
+        self.device = device
+    
+    def __call__(self, q_embeds, d_embeds):
+        d_labels = torch.arange(0, d_embeds.shape[0]).to(self.device)
+        q_lables = d_labels.repeat_interleave(self.num_pos).to(self.device)
+
+        return self.loss(embeddings = d_embeds, labels = d_labels, ref_emb =q_lables, ref_labels = q_lables)
+
     
 class CustomAccuracyCalc(AccuracyCalculator):
     """
