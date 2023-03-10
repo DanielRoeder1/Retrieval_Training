@@ -1,10 +1,15 @@
 paths:
-  q_model_name: "sentence-transformers/all-distilroberta-v1"
-  d_model_name: "sentence-transformers/all-distilroberta-v1"
   dataset_path: '/content/drive/MyDrive/Master_Thesis/train_data/traint_test_dataset'
   save_path: '/content/sample_data'
+q_model:
+  path: "sentence-transformers/all-distilroberta-v1"
+  special_tokens: []
+d_model:
+  path: "sentence-transformers/all-distilroberta-v1"
+  special_tokens: []
 training:
   batch_size: 24
+  num_pos: 3
   epochs: 5
   lr: 1.0E-5
   mode: "bi-encoder"
