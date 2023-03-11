@@ -94,7 +94,7 @@ def train(args):
     print(f"[{get_time()}] [LOG]: Starting training")
     for epoch in range(args.training.epochs):
         av_train.reset()
-        for i, inputs in enumerate(train_loader):
+        for i, inputs in enumerate(train_loader,1):
             for input in inputs: input.to(device)
             with autocast(device_type='cuda', dtype=torch.float16):
                 q_embeds, d_embeds = model(inputs)
@@ -102,17 +102,17 @@ def train(args):
                 loss = loss / args.training.accumulation_steps
             
             scaler.scale(loss).backward()
-            if (i + 1) % args.training.accumulation_steps == 0:
+            if i % args.training.accumulation_steps == 0:
                 scaler.step(optimizer)
                 scaler.update()
                 optimizer.zero_grad(set_to_none=True)
 
             av_train.update(loss.item())
-            if (i + 1) % print_every== 0:
-                wandb.log({"Train Loss": av_train.get_avg()})
-                print(f"[{get_time()}] [{epoch}/{args.training.epochs}, {i+1 // args.training.accumulation_steps}/{num_batches // args.training.accumulation_steps}], Loss: {av_train}")
+            if i % print_every== 0:
+                if args.wandb.use: wandb.log({"Avg train Loss": av_train.get_avg(), "loss":av_train.val})
+                print(f"[{get_time()}] [{epoch}/{args.training.epochs}, {i // args.training.accumulation_steps}/{num_batches // args.training.accumulation_steps}], Loss: {av_train}")
         
-            if (i + 1) % eval_every == 0:
+            if i % eval_every == 0:
                 evaluate_during_train()
                 model.train()
                 

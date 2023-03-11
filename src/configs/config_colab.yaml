@@ -8,7 +8,7 @@ d_model:
   path: "sentence-transformers/all-distilroberta-v1"
   special_tokens: []
 training:
-  batch_size: 24
+  batch_size: 8
   num_pos: 3
   epochs: 5
   lr: 1.0E-5
@@ -19,7 +19,7 @@ logging:
   print_freq: 5
 cross_batch_memory:
   use: True
-  buffer_size: 400
+  buffer_size: 160
   warmup: 1000
 wandb:
   use: True

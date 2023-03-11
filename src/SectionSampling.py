@@ -70,7 +70,7 @@ def outer_collate(tokenizer_doc, tokenizer_query):
     query = [{"input_ids":ids } for input_dict in data for ids in input_dict["pos_input_ids"]]
     doc = tokenizer_doc.pad(doc, return_attention_mask=True, return_tensors="pt")
     query = tokenizer_query.pad(query, return_attention_mask=True, return_tensors="pt")
-    return doc, query
+    return query, doc
   return collate_fn
 
 def get_data_loader(dataset, tokenizer1, tokenizer2, batch_size, shuffle = True):
