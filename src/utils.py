@@ -22,7 +22,8 @@ def load_args():
         args.config_path = tmp
     
     assert args.q_model.path is not None, "Must provide query model name, for Siamese networks only the q_model is used"
-    args.training.eval_freq = determine_type(args.training.eval_freq)
+    #Config params automatically set 
+    #args.training.eval_freq = determine_type(args.training.eval_freq)
 
     # Get wandb login
     if args.wandb.use:
