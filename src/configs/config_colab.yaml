@@ -15,6 +15,10 @@ training:
   mode: "bi-encoder"
   eval_freq: 10
   accumulation_steps: 5
+evaluation:
+  eval_freq: 10
+  eval_accumulation: 20
+  batch_size: 50
 logging:
   print_freq: 5
 cross_batch_memory:

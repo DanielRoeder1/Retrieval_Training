@@ -14,7 +14,7 @@ from utils import load_args, AverageMeter, get_eval_steps, get_time, AverageMete
 #from data import  get_data_loader
 from SectionSampling import get_data_loader
 from model import BiEncoder
-from loss import CrossBatchMemoryWrapper, CustomAccuracyCalc, LabelLossWrapper
+from loss import CrossBatchMemoryWrapper, CustomAccuracyCalc, LabelLossWrapper, EmbedBuffer
 
 
 def train(args):
@@ -48,9 +48,8 @@ def train(args):
     #data = load_dataset("csv", data_files= args.dataset_path)
     data = load_from_disk(args.paths.dataset_path)
     train_loader = get_data_loader(data["train"],q_tokenizer, d_tokenizer, args.training.batch_size)
-    val_loader = get_data_loader(data["test"],q_tokenizer, d_tokenizer, args.training.batch_size)
+    val_loader = get_data_loader(data["test"],q_tokenizer, d_tokenizer, args.evaluation.batch_size)
     # Set the loss function
-    if args.training.accumulation_steps < 1: args.training.accumulation_steps = 1
     if args.cross_batch_memory.use:
         loss_func = CrossBatchMemoryWrapper(q_encoder.config.hidden_size, device, memory_size=args.cross_batch_memory.buffer_size, warmup = args.cross_batch_memory.warmup, acc_steps= args.training.accumulation_steps, num_pos =args.training.num_pos)
     else:
@@ -70,27 +69,30 @@ def train(args):
     scaler = GradScaler()
 
     # TODO: fix accuracy calculation
-    # TODO: fix best_val_loss referenced before assignment
     def evaluate_during_train():
+        b = EmbedBuffer(args.evaluation.eval_accumulation,q_encoder.config.hidden_size,device, args.training.num_pos, args.batch_size)
         print(f"[{get_time()}] [LOG]: Evaluating model")             
         model.eval()
         av_val.reset()
         av_val_acc.reset()
-
-        for inputs in val_loader:
+ 
+        for idx, inputs in enumerate(val_loader):
             with torch.no_grad():
                 for input in inputs: input.to(device)
                 q_embeds, d_embeds = model(inputs)
                 loss = loss_func(q_embeds, d_embeds)
                 av_val.update(loss.item())
-            acc_metrics = acc_calc.get_acc_wrapper(q_embeds, d_embeds)
-            av_val_acc.update(acc_metrics)
+                b.add(q_embeds, d_embeds)
+        
+            if (idx+1) % args.evaluation.eval_accumulation == 0:
+                acc_metrics = acc_calc.get_acc_wrapper(b.buffer_q, b.buffer_d)
+                av_val_acc.update(acc_metrics)
 
         print(f"[{get_time()}] Epoch: {epoch}, Average Loss {av_val},  \n Average Metrics: {av_val_acc.get_avg()}")
         avg_loss = av_val.get_avg()
         if avg_loss < best_val_loss:
             print(f"[{get_time()}] [LOG]: Saving model")
-            model_name = "checkpoint_epoch_{epoch}_steps{i}_loss_{avg_loss}.pt"
+            model_name = f"checkpoint_epoch_{epoch}_steps{i}_loss_{avg_loss:.4f}.pt"
             torch.save(model.state_dict(), os.path.join(args.paths.save_path, model_name))
             return avg_loss
         else:

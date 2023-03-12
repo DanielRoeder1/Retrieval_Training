@@ -76,3 +76,20 @@ class CustomAccuracyCalc(AccuracyCalculator):
         q_labels = d_labels.repeat_interleave(q_embeds.shape[0]//d_embeds.shape[0]).to(self.device)
 
         return super().get_accuracy(query = q_embeds, reference = d_embeds,query_labels =  q_labels, reference_labels = d_labels)
+    
+
+class EmbedBuffer:
+    def __init__(self, buffer_size, embedding_size, device, num_pos, batch_size):
+        self.buffer_size = buffer_size * batch_size
+        self.buffer_q = torch.zeros((buffer_size * num_pos, embedding_size)).to(device)
+        self.buffer_d = torch.zeros((buffer_size, embedding_size)).to(device)
+        self.num_pos = num_pos
+    def add(self, q_embed, d_embed, index):
+        batch_size = d_embed.shape[0]
+        tmp_d = index * batch_size
+        tmp_q = tmp_d * self.num_pos
+
+        d_idx = torch.arange(tmp_d, tmp_d + batch_size)% self.buffer_size
+        q_idx = torch.arange(tmp_q, tmp_q + batch_size * self.num_pos)% self.buffer_size
+        self.buffer_q[q_idx] = q_embed
+        self.buffer_d[d_idx] = d_embed
