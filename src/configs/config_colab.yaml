@@ -13,7 +13,7 @@ training:
   epochs: 5
   lr: 1.0E-5
   mode: "bi-encoder"
-  eval_freq: 0.001
+  eval_freq: 10
   accumulation_steps: 5
 logging:
   print_freq: 5

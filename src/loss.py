@@ -29,8 +29,8 @@ class CrossBatchMemoryWrapper():
     
         
     def __call__(self, q_embeds, d_embeds):
-        all_enc = torch.cat([q_embeds, d_embeds], dim=0)
-        labels, enqueue_mask = self.get_labels(q_embeds.shape[0])
+        all_enc = torch.cat([d_embeds,q_embeds], dim=0)
+        labels, enqueue_mask = self.get_labels(d_embeds.shape[0])
         self.prev_max_label = labels.max()
         loss = self.loss_fn(embeddings = all_enc, labels = labels, enqueue_mask = enqueue_mask)
         if self.iteration < self.warmup and self.iteration % self.accumulation_steps == 0:

@@ -4,6 +4,7 @@ from pytorch_metric_learning import losses
 from torch.optim import AdamW
 import torch
 import wandb
+import os
 
 # Mixed precision training
 from torch.cuda.amp import GradScaler
@@ -63,7 +64,8 @@ def train(args):
     av_val_acc = AverageMeterDict()
     num_batches = len(train_loader)
     eval_every = get_eval_steps(args.training.eval_freq,num_batches)
-    best_val_loss = float('inf')
+    best_val_loss = float("inf")
+
     # Mixed precision training - Scaler
     scaler = GradScaler()
 
@@ -75,7 +77,7 @@ def train(args):
         av_val.reset()
         av_val_acc.reset()
 
-        for i, inputs in enumerate(val_loader):
+        for inputs in val_loader:
             with torch.no_grad():
                 for input in inputs: input.to(device)
                 q_embeds, d_embeds = model(inputs)
@@ -85,10 +87,14 @@ def train(args):
             av_val_acc.update(acc_metrics)
 
         print(f"[{get_time()}] Epoch: {epoch}, Average Loss {av_val},  \n Average Metrics: {av_val_acc.get_avg()}")
-        if av_val.get_avg() < best_val_loss:
+        avg_loss = av_val.get_avg()
+        if avg_loss < best_val_loss:
             print(f"[{get_time()}] [LOG]: Saving model")
-            torch.save(model.state_dict(), args.paths.save_path)
-            best_val_loss = av_val.avg
+            model_name = "checkpoint_epoch_{epoch}_steps{i}_loss_{avg_loss}.pt"
+            torch.save(model.state_dict(), os.path.join(args.paths.save_path, model_name))
+            return avg_loss
+        else:
+            return best_val_loss
 
 
     # Training loop
@@ -114,7 +120,7 @@ def train(args):
                 print(f"[{get_time()}] [{epoch}/{args.training.epochs}, {i // args.training.accumulation_steps}/{num_batches // args.training.accumulation_steps}], Loss: {av_train}")
         
             if i % eval_every == 0:
-                evaluate_during_train()
+                best_val_loss = evaluate_during_train()
                 model.train()
                 
         
