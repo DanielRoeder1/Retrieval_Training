@@ -56,7 +56,6 @@ def train(args):
         loss_func = LabelLossWrapper(losses.NTXentLoss(temperature = 0.07), num_pos = args.training.num_pos, device = device)
     # Accuracy metrics for evaluation
     acc_calc = CustomAccuracyCalc()
-    acc_labels = torch.arange(args.training.batch_size).to(device)
     # Logging
     print_every = args.logging.print_freq  * args.training.accumulation_steps
     av_train = AverageMeter()
@@ -68,6 +67,8 @@ def train(args):
     # Mixed precision training - Scaler
     scaler = GradScaler()
 
+    # TODO: fix accuracy calculation
+    # TODO: fix best_val_loss referenced before assignment
     def evaluate_during_train():
         print(f"[{get_time()}] [LOG]: Evaluating model")             
         model.eval()
@@ -80,7 +81,7 @@ def train(args):
                 q_embeds, d_embeds = model(inputs)
                 loss = loss_func(q_embeds, d_embeds)
                 av_val.update(loss.item())
-            acc_metrics = acc_calc.get_accuracy(query = q_embeds, reference = d_embeds,query_labels =  acc_labels, reference_labels = acc_labels)
+            acc_metrics = acc_calc.get_acc_wrapper(q_embeds, d_embeds)
             av_val_acc.update(acc_metrics)
 
         print(f"[{get_time()}] Epoch: {epoch}, Average Loss {av_val},  \n Average Metrics: {av_val_acc.get_avg()}")

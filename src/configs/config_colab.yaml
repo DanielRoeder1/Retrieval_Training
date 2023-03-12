@@ -1,5 +1,5 @@
 paths:
-  dataset_path: '/content/drive/MyDrive/Master_Thesis/train_data/traint_test_dataset'
+  dataset_path: '/content/drive/MyDrive/Master_Thesis/train_data/WikiTokenized'
   save_path: '/content/sample_data'
 q_model:
   path: "sentence-transformers/all-distilroberta-v1"
@@ -13,7 +13,7 @@ training:
   epochs: 5
   lr: 1.0E-5
   mode: "bi-encoder"
-  eval_freq: 0.01
+  eval_freq: 0.001
   accumulation_steps: 5
 logging:
   print_freq: 5

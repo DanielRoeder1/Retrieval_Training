@@ -18,7 +18,7 @@ class CrossBatchMemoryWrapper():
         self.accumulation_steps = acc_steps
         self.num_pos = num_pos
 
-    
+    # TODO decide whether to save query or documens in cross batch memory
     def get_labels(self, batch_size):
         labels = torch.arange(0, batch_size)
         labels = torch.cat((labels, labels.repeat_interleave(self.num_pos))).to(self.device)
@@ -42,6 +42,7 @@ class CrossBatchMemoryWrapper():
 class LabelLossWrapper:
     """
     Similar to SelfSupervisedLoss but allows for multiple positive samples per document
+    Note: This expects a constant number of positive samples per document
     """
     def __init__(self, loss_fn, num_pos,device):
         self.loss = loss_fn
@@ -49,10 +50,11 @@ class LabelLossWrapper:
         self.device = device
     
     def __call__(self, q_embeds, d_embeds):
+        
         d_labels = torch.arange(0, d_embeds.shape[0]).to(self.device)
         q_lables = d_labels.repeat_interleave(self.num_pos).to(self.device)
 
-        return self.loss(embeddings = d_embeds, labels = d_labels, ref_emb =q_lables, ref_labels = q_lables)
+        return self.loss(embeddings = d_embeds, labels = d_labels, ref_emb =q_embeds, ref_labels = q_lables)
 
     
 class CustomAccuracyCalc(AccuracyCalculator):
@@ -68,3 +70,9 @@ class CustomAccuracyCalc(AccuracyCalculator):
 
     def requires_knn(self):
         return super().requires_knn() + ["avg_rank_first"] 
+    
+    def get_acc_wrapper(self, q_embeds, d_embeds):
+        d_labels = torch.arange(0, d_embeds.shape[0]).to(self.device)
+        q_labels = d_labels.repeat_interleave(q_embeds.shape[0]//d_embeds.shape[0]).to(self.device)
+
+        return super().get_accuracy(query = q_embeds, reference = d_embeds,query_labels =  q_labels, reference_labels = d_labels)
