@@ -34,6 +34,8 @@ def load_args():
             # Have config in dict format again for wandb
             with open(args.config_path, 'r') as f:
                 args.wandb_config = yaml.safe_load(f)
+    if args.training.accumulation_steps < 1: args.training.accumulation_steps = 1
+    if args.evaluation.eval_accumulation < 1: args.evaluation.eval_accumulation = 1
     return args
 
 
