@@ -16,12 +16,15 @@ from SectionSampling import get_data_loader
 from model import BiEncoder
 from loss import CrossBatchMemoryWrapper, CustomAccuracyCalc, LabelLossWrapper, EmbedBuffer
 
+# TODO: Add support for poly-encoder
+# TODO: Refactor inputs to take args instead of individual parameters
 
 def train(args):
     if args.wandb.use:
         wandb.login(key = args.wandb.api_key)
         wandb.init(args.wandb.project_name, config=args.wandb_config)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    faiss_device = torch.device(args.evaluation.faiss_device)
     # Load the query and document encoders
     q_encoder = AutoModel.from_pretrained(args.q_model.path)
     q_tokenizer = AutoTokenizer.from_pretrained(args.q_model.path)
@@ -55,7 +58,7 @@ def train(args):
     else:
         loss_func = LabelLossWrapper(losses.NTXentLoss(temperature = 0.07), num_pos = args.training.num_pos, device = device)
     # Accuracy metrics for evaluation
-    acc_calc = CustomAccuracyCalc()
+    acc_calc = CustomAccuracyCalc(exclude=("AMI","NMI"), device = faiss_device)
     # Logging
     print_every = args.logging.print_freq  * args.training.accumulation_steps
     av_train = AverageMeter()
@@ -70,19 +73,20 @@ def train(args):
 
     # TODO: fix accuracy calculation
     def evaluate_during_train():
-        b = EmbedBuffer(args.evaluation.eval_accumulation,q_encoder.config.hidden_size,device, args.training.num_pos, args.batch_size)
+        b = EmbedBuffer(args.evaluation.eval_accumulation,q_encoder.config.hidden_size,device, args.training.num_pos, args.evaluation.batch_size)
         print(f"[{get_time()}] [LOG]: Evaluating model")             
         model.eval()
         av_val.reset()
         av_val_acc.reset()
  
         for idx, inputs in enumerate(val_loader):
-            with torch.no_grad():
-                for input in inputs: input.to(device)
-                q_embeds, d_embeds = model(inputs)
-                loss = loss_func(q_embeds, d_embeds)
-                av_val.update(loss.item())
-                b.add(q_embeds, d_embeds)
+            with autocast(device_type='cuda', dtype=torch.float16):
+                with torch.no_grad():
+                    for input in inputs: input.to(device)
+                    q_embeds, d_embeds = model(inputs)
+                    loss = loss_func(q_embeds, d_embeds)
+                    av_val.update(loss.item())
+                    b.add(q_embeds, d_embeds, idx)
         
             if (idx+1) % args.evaluation.eval_accumulation == 0:
                 acc_metrics = acc_calc.get_acc_wrapper(b.buffer_q, b.buffer_d)

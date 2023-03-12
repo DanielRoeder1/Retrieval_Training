@@ -17,8 +17,9 @@ training:
   accumulation_steps: 5
 evaluation:
   eval_freq: 10
-  eval_accumulation: 20
+  eval_accumulation: 50
   batch_size: 50
+  faiss_device: "cpu"
 logging:
   print_freq: 5
 cross_batch_memory:
