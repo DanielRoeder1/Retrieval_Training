@@ -6,7 +6,7 @@ q_model:
   special_tokens: []
 d_model:
   path: "sentence-transformers/all-distilroberta-v1"
-  special_tokens: []
+  special_tokens: ["Section::::", "BULLET::::"]
 training:
   batch_size: 8
   num_pos: 3
