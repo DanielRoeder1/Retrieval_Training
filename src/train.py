@@ -26,6 +26,7 @@ from loss import CrossBatchMemoryWrapper, CustomAccuracyCalc, LabelLossWrapper, 
 # x TODO: Ensure that document embeddings are writen into cross batch memory
 # x TODO: Update warmup code for cross batch memory
 # x TODO: fix accuracy calculation
+# TODO: change eval every to take accumulation into account
 
 def train(args):
     if args.wandb.use:

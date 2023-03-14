@@ -86,8 +86,8 @@ class CustomAccuracyCalc(AccuracyCalculator):
 class EmbedBuffer:
     def __init__(self, buffer_size, embedding_size, device, num_pos, batch_size):
         self.buffer_size = buffer_size * batch_size
-        self.buffer_q = torch.zeros((buffer_size * num_pos, embedding_size)).to(device)
-        self.buffer_d = torch.zeros((buffer_size, embedding_size)).to(device)
+        self.buffer_q = torch.zeros((self.buffer_size * num_pos, embedding_size)).to(device)
+        self.buffer_d = torch.zeros((self.buffer_size, embedding_size)).to(device)
         self.num_pos = num_pos
     def add(self, q_embed, d_embed, index):
         batch_size = d_embed.shape[0]

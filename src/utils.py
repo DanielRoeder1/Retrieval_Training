@@ -36,7 +36,7 @@ def load_args():
                 args.wandb_config = yaml.safe_load(f)
     if args.training.accumulation_steps < 1: args.training.accumulation_steps = 1
     if args.evaluation.eval_accumulation < 1: args.evaluation.eval_accumulation = 1
-    if args.training.use_torch_compile: assert torch.__version__ >= 2.0, "Torch version must be greater than 2.0 to use torch.compile(),install torch > 2.0 or diable in config"
+    if args.training.use_torch_compile: assert torch.__version__ >= "2.0", "Torch version must be greater than 2.0 to use torch.compile(),install torch > 2.0 or diable in config"
     return args
 
 
