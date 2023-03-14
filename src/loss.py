@@ -6,36 +6,41 @@ class CrossBatchMemoryWrapper():
     """
     Allows CrossBatchMemory to be called like SelfSupervisedLoss
     """
-    def __init__(self, embedding_size,device,warmup,acc_steps, num_pos, memory_size=400):
-        self.loss_fn = losses.CrossBatchMemory(losses.NTXentLoss(temperature=0.07), embedding_size, memory_size=memory_size, miner=None)
+    def __init__(self, embedding_size,device,warmup,acc_steps, num_pos, memory_size):
+        # As gradient accumulation results in the model weights only being update every acc_steps
+        # we can set the buffer size to be acc_steps thus profiting from additional samples during warmup
+        # After warmup, the buffer size is set to the intended buffer size
+        self.loss_fn = losses.CrossBatchMemory(losses.NTXentLoss(temperature=0.07), embedding_size, memory_size=acc_steps, miner=None)
         self.prev_max_label = -1
         self.device = device
 
         # Take gradient accumulation into account:
-        # While we are within the warmup period, build the buffer for acc_steps as no model updates are done
         self.warmup = warmup *acc_steps
         self.iteration = 1
         self.accumulation_steps = acc_steps
         self.num_pos = num_pos
+        self.orig_memory_size = memory_size
 
-    # TODO decide whether to save query or documens in cross batch memory
+    # We are saving the documents in the cross batch buffer 
     def get_labels(self, batch_size):
-        labels = torch.arange(0, batch_size)
+        labels = torch.arange(batch_size)
         labels = torch.cat((labels, labels.repeat_interleave(self.num_pos))).to(self.device)
         labels += self.prev_max_label+1
         enqueue_mask = torch.zeros(len(labels)).bool()
-        enqueue_mask[batch_size:] = True
+        enqueue_mask[:batch_size] = True
         return labels , enqueue_mask
     
-        
     def __call__(self, q_embeds, d_embeds):
+        if self.iteration == self.warmup:
+            # Set buffer size to intended buffer_size
+            self.loss_fn.memory_size = self.orig_memory_size
+            self.loss_fn.reset_queue()
+        self.iteration += 1
+
         all_enc = torch.cat([d_embeds,q_embeds], dim=0)
         labels, enqueue_mask = self.get_labels(d_embeds.shape[0])
         self.prev_max_label = labels.max()
         loss = self.loss_fn(embeddings = all_enc, labels = labels, enqueue_mask = enqueue_mask)
-        if self.iteration < self.warmup and self.iteration % self.accumulation_steps == 0:
-            self.loss_fn.reset_queue()
-        self.iteration += 1
         return loss
     
 
