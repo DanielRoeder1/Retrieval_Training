@@ -14,8 +14,8 @@
 - epochs: Number of training epochs (int)
 - lr: learning rate (float)
 - mode: The type of achitecture (Bi-Enoder|Poly-Encoder) the q and d_model are implemented in (str)
-- use_torch_compile: Whether to use the torch 2.0 feature compile to speed up gpu training
-- accumulation_steps: How many gradient accumulation steps to take
+- use_torch_compile: Whether to use the torch 2.0 feature compile to speed up gpu training (bool)
+- accumulation_steps: How many gradient accumulation steps to take (int)
 #### Evaluation:
 - eval_freq: How often evaluation is performed, "epoch"= end of epoch, int = after x steps, float = after x percent of epoch (string|int|float)
 - eval_accumulation: We accumulate the embeddings of x eval batches and calculate the accuracy metrics of the accumulated batch. (int)
