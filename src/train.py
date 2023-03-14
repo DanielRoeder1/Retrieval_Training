@@ -17,7 +17,15 @@ from model import BiEncoder
 from loss import CrossBatchMemoryWrapper, CustomAccuracyCalc, LabelLossWrapper, EmbedBuffer
 
 # TODO: Add support for poly-encoder
-# TODO: Refactor inputs to take args instead of individual parameters
+# - TODO: Refactor inputs to take args instead of individual parameters
+# x TODO: Check torch version 2.0 and use torch.compile() if available
+# TODO: choose a miner for cross batch memory
+# x TODO: Check if embeddings are normalized already and then use dot product simmilarity -> noot normalized bi-encoder
+# x TODO: add special tokens to tokenizer
+# x TODO: Write readme config file
+# x TODO: Ensure that document embeddings are writen into cross batch memory
+# x TODO: Update warmup code for cross batch memory
+# x TODO: fix accuracy calculation
 
 def train(args):
     if args.wandb.use:
@@ -28,6 +36,8 @@ def train(args):
     # Load the query and document encoders
     q_encoder = AutoModel.from_pretrained(args.q_model.path)
     q_tokenizer = AutoTokenizer.from_pretrained(args.q_model.path)
+    q_tokenizer.add_special_tokens({'additional_special_tokens': args.q_model.special_tokens})
+    q_encoder.resize_token_embeddings(len(q_tokenizer))
     # If no document encoder is provided, construct siamese model
     if args.d_model.path is None:
         print(f"[{get_time()}] [LOG]: Using the same encoder for query and document")
@@ -39,12 +49,15 @@ def train(args):
         d_encoder = AutoModel.from_pretrained(args.d_model.path)
         d_tokenizer = AutoTokenizer.from_pretrained(args.d_model.path)
         optimizer = AdamW(list(q_encoder.parameters()) + list(d_encoder.parameters()), lr =args.training.lr)
+    d_tokenizer.add_special_tokens({'additional_special_tokens': args.d_model.special_tokens})
+    d_encoder.resize_token_embeddings(len(d_tokenizer))
     assert d_encoder.config.hidden_size == q_encoder.config.hidden_size, "Query and document encoders must have the same hidden size"
     # Set model type
     if args.training.mode == "bi-encoder":
         model = BiEncoder(q_encoder, d_encoder).to(device)
     elif args.training.mode == "poly-encoder":
         pass
+    if args.training.use_torch_compile: model = torch.compile(model)
     model.train()
     assert args.training.mode in ["bi-encoder", "poly-encoder"], "Invalid model type"
     # Get the data loader
@@ -65,13 +78,12 @@ def train(args):
     av_val = AverageMeter()
     av_val_acc = AverageMeterDict()
     num_batches = len(train_loader)
-    eval_every = get_eval_steps(args.training.eval_freq,num_batches)
+    eval_every = get_eval_steps(args.evaluation.eval_freq,num_batches)
     best_val_loss = float("inf")
-
     # Mixed precision training - Scaler
     scaler = GradScaler()
 
-    # TODO: fix accuracy calculation
+
     def evaluate_during_train():
         b = EmbedBuffer(args.evaluation.eval_accumulation,q_encoder.config.hidden_size,device, args.training.num_pos, args.evaluation.batch_size)
         print(f"[{get_time()}] [LOG]: Evaluating model")             
