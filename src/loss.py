@@ -95,6 +95,6 @@ class EmbedBuffer:
         tmp_q = tmp_d * self.num_pos
 
         d_idx = torch.arange(tmp_d, tmp_d + batch_size)% self.buffer_size
-        q_idx = torch.arange(tmp_q, tmp_q + batch_size * self.num_pos)% self.buffer_size
+        q_idx = torch.arange(tmp_q, tmp_q + batch_size * self.num_pos)% (self.buffer_size*self.num_pos)
         self.buffer_q[q_idx] = q_embed
         self.buffer_d[d_idx] = d_embed
