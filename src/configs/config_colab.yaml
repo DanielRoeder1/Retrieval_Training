@@ -13,7 +13,7 @@ training:
   epochs: 5
   lr: 1.0E-5
   mode: "bi-encoder"
-  use_torch_compile: True
+  use_torch_compile: False
   accumulation_steps: 5
 evaluation:
   eval_freq: 10
