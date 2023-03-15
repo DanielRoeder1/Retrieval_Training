@@ -21,13 +21,15 @@ class CrossBatchMemoryWrapper():
         self.num_pos = num_pos
         self.orig_memory_size = memory_size
 
-    # We are saving the documents in the cross batch buffer 
+    # We are saving the queries in the cross batch buffer 
+    # CrossBatchMemory sets the buffere as reference -> pos/neg samples
+    # The non buffered batch is set as embeddings -> anchors
     def get_labels(self, batch_size):
         labels = torch.arange(batch_size)
         labels = torch.cat((labels, labels.repeat_interleave(self.num_pos))).to(self.device)
         labels += self.prev_max_label+1
         enqueue_mask = torch.zeros(len(labels)).bool()
-        enqueue_mask[:batch_size] = True
+        enqueue_mask[batch_size:] = True
         return labels , enqueue_mask
     
     def __call__(self, q_embeds, d_embeds):
