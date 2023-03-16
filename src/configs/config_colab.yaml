@@ -21,7 +21,7 @@ evaluation:
   batch_size: 50
   faiss_device: "cpu"
 logging:
-  print_freq: 5
+  print_freq: 50
 cross_batch_memory:
   use: True
   buffer_size: 160

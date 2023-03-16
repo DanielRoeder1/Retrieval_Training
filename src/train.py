@@ -106,7 +106,7 @@ def train(args):
                 av_val_acc.update(acc_metrics)
 
         print(f"[{get_time()}] Epoch: {epoch}, Average Loss {av_val},  \n Average Metrics: {av_val_acc.get_avg()}")
-        if args.wand.use: wandb.log(av_val.get_avg(), step = i + epoch * num_batches)
+        if args.wandb.use: wandb.log(av_val_acc.get_avg(), step = i + epoch * num_batches)
         avg_loss = av_val.get_avg()
         if avg_loss < best_val_loss:
             print(f"[{get_time()}] [LOG]: Saving model")
