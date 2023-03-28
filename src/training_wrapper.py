@@ -1,5 +1,5 @@
 import torch
-from test_poly import CustomNTXentLoss
+from test_loss import CustomNTXentLoss
 import numpy as np
 
 class PolyEncoderWrapper(torch.nn.Module):
