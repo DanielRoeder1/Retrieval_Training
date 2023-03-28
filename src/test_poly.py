@@ -11,14 +11,14 @@ from SectionSampling import get_data_loader
 from torch.cuda.amp import GradScaler
 from utils import get_time
 from torch import autocast
-from loss import AverageMeterDict, AverageMeter
+from utils import AverageMeterDict, AverageMeter
 
 
 def train(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     faiss_device = torch.device(args.evaluation.faiss_device)
-    q_model = PolyEncoder.from_pretrained(args.q_model_name, num_heads = 100)
-    d_model = PooledEncoder.from_pretrained(args.d_model_name)
+    q_model = PolyEncoder.from_pretrained(args.q_model.path, num_codes = 100).to(device)
+    d_model = PooledEncoder.from_pretrained(args.d_model.path).to(device)
     model = PolyEncoderWrapper(d_model, q_model, args)
     # Load the query and document encoders
     q_tokenizer = AutoTokenizer.from_pretrained(args.q_model.path)
@@ -33,7 +33,7 @@ def train(args):
     train_loader = get_data_loader(data["train"],q_tokenizer, d_tokenizer, args.training.batch_size)
     val_loader = get_data_loader(data["test"],q_tokenizer, d_tokenizer, args.evaluation.batch_size)
     # Set the loss function
-   
+    num_batches = len(train_loader)
     # Logging
     print_every = args.logging.print_freq  * args.training.accumulation_steps
 
