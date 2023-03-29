@@ -4,15 +4,17 @@ paths:
 q_model:
   path: "sentence-transformers/all-distilroberta-v1"
   special_tokens: []
+  model_args: {"num_poly_codes": 100}
 d_model:
-  path: "sentence-transformers/all-distilroberta-v1"
+  path: ''
   special_tokens: ["Section::::", "BULLET::::"]
+  model_args: {}
 training:
   batch_size: 8
   num_pos: 3
   epochs: 5
   lr: 1.0E-5
-  mode: "bi-encoder"
+  mode: "poly-encoder"
   use_torch_compile: False
   accumulation_steps: 5
 evaluation:
