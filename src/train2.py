@@ -17,6 +17,7 @@ def train(args):
     train_loader, val_loader = get_data_loaders(args, q_tokenizer, d_tokenizer, True)
     print_every, num_batches, eval_every = get_logging_vars(args, len(train_loader))
     eval = Evaluator(args, val_loader, device, faiss_device, model.q_model.config.hidden_size)
+    eval_func = getattr(eval, model.eval_type)
     
     av_train = AverageMeter()
     best_val_loss = float("inf")
@@ -45,7 +46,7 @@ def train(args):
                 print(f"[{get_time()}] [{epoch}/{args.training.epochs}, {i // args.training.accumulation_steps}/{num_batches // args.training.accumulation_steps}], Loss: {av_train}")
         
             if i % eval_every == 0:
-                avg_loss, avg_acc = eval.evaluate(model)
+                avg_loss, avg_acc = eval_func(model)
                 if args.wandb.use: wandb.log(avg_acc, step = i + epoch * num_batches)
                 print(f"[{get_time()}] Epoch: {epoch}, Average Loss {avg_loss},  \n Average Metrics: {avg_acc}")
 

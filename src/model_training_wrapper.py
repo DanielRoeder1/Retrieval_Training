@@ -11,6 +11,7 @@ class PolyEncoderWrapper(torch.nn.Module):
         self.q_model = q_model
         self.d_model = d_model
         self.loss_func = CustomNTXentLoss(temperature=0.07)
+        self.eval_type = "eval_conditional"
 
         self.indices_tuples = self.get_indices_tuple(args.training.batch_size, args.training.num_pos)
     
@@ -40,6 +41,7 @@ class BiEncoderWrapper(torch.nn.Module):
         super().__init__()
         self.q_model = q_model
         self.d_model = d_model
+        self.eval_type = "evaluate"
 
         if args.cross_batch_memory.use:
             self.loss_func = CrossBatchMemoryWrapper(q_model.config.hidden_size, device = self.q_model.device, memory_size=args.cross_batch_memory.buffer_size, warmup = args.cross_batch_memory.warmup, acc_steps= args.training.accumulation_steps, num_pos =args.training.num_pos)

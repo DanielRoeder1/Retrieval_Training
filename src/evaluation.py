@@ -21,6 +21,21 @@ class EmbedBuffer:
     def get(self):
         return self.buffer[:self.max_fill_idx]
     
+def cosine_ranking(q_embed, doc_embed, num_pos):
+    """
+    q_embed: (num_query, num_doc, dim)
+    doc_embed: (num_doc, dim)
+    num_pos: queries per doc 
+    Assumes that the first num_pos queries relate to doc 0 ...
+    """
+    a = torch.nn.functional.normalize(q_embed, dim = 2)
+    b = torch.nn.functional.normalize(doc_embed, dim = 1)
+    index_gt = torch.arange(q_embed.shape[0] // num_pos).repeat_interleave(num_pos)
+    cos_sim = torch.sum(a*b, dim=-1)
+    ranking = cos_sim.argsort()
+    _, rank = torch.where(ranking == index_gt.unsqueeze(1))
+    return rank
+    
 
 class Evaluator:
     def __init__(self, args, val_loader, device, faiss_device, hidden_size):
@@ -58,4 +73,35 @@ class Evaluator:
                 acc_metrics = self.acc_calc.get_acc_wrapper(self.q_buff.get(), self.d_buff.get())
                 self.av_val_acc.update(acc_metrics)
         
+        return self.av_val.get_avg(), self.av_val_acc.get_avg()
+    
+    def eval_conditional(self, model):
+        print(f"[{get_time()}] [LOG]: Evaluating model")  
+        self.reset()
+        model.eval()
+        iter_loader = iter(self.val_loader)
+
+        for i , inputs in enumerate(self.val_loader):
+            _, pool_inputs = inputs
+            pool_inputs.to(self.device)
+            with autocast(device_type='cuda', dtype=torch.float16):
+                with torch.no_grad():
+                    pool_emb = model.pool_enc(pool_inputs)
+                    self.d_buff.add(pool_emb)
+                    
+            if (i+1) % self.args.evaluation.eval_accumulation == 0:
+                pool_embed = self.d_buff.get()
+                for i in range(self.args.evaluation.eval_accumulation):
+                    cond_inputs, pool_inputs = next(iter_loader)
+                    cond_inputs.to(self.device)
+                    with autocast(device_type='cuda', dtype=torch.float16):
+                        with torch.no_grad():
+                            cond_emb = model.cond_enc(cond_inputs, pool_embed)
+                            ranks = cosine_ranking(cond_emb, pool_embed, self.args.training.num_pos)
+                            indices_tuple = model.get_indices_tuple(pool_inputs.shape[0],self.args.training.num_pos)
+                            cond_loss_embed = cond_emb[:,:pool_inputs.shape[0],:]
+                            pool_loss_embed = pool_embed[:pool_inputs.shape[0],:]
+                            loss = model.loss_func(embeddings= pool_loss_embed, indices_tuple= indices_tuple, ref_emb = cond_loss_embed)
+                            self.av_val.update(loss.item())
+                            self.av_val_acc.update({"mean_rank_first":ranks.mean().item()})
         return self.av_val.get_avg(), self.av_val_acc.get_avg()
