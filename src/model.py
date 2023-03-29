@@ -34,9 +34,9 @@ class GeneralizedPreTrainedModel(PreTrainedModel):
         return getattr(self, self.base_model_prefix, self)._init_weights(module)
 
 class PooledEncoder(GeneralizedPreTrainedModel):
-    def __init__(self, config):
+    def __init__(self, config, args, enc_model=None):
         super().__init__(config)
-        self.enc_model = AutoModel.from_config(config)
+        self.enc_model = AutoModel.from_config(config) if enc_model is None else enc_model
 
     def mean_pooling(self, model_output, attention_mask):
         token_embeddings = model_output[0] #First element of model_output contains all token embeddings
@@ -48,11 +48,11 @@ class PooledEncoder(GeneralizedPreTrainedModel):
         return self.mean_pooling(model_output, inputs['attention_mask'])
     
 class PolyEncoder(GeneralizedPreTrainedModel):
-    def __init__(self, config, num_codes):
+    def __init__(self, config, args, enc_model=None):
         super().__init__(config)
-        self.enc_model = AutoModel.from_config(config)
-        self.register_buffer('poly_codes', torch.normal(0,1,(num_codes, config.hidden_size), requires_grad=True))
-        self.poly_m = num_codes
+        self.enc_model = AutoModel.from_config(config) if enc_model is None else enc_model
+        self.register_buffer('poly_codes', torch.normal(0,1,(args.num_poly_codes, config.hidden_size), requires_grad=True))
+        self.poly_m = args.num_poly_codes
 
     def dot_attention(self, q, k, v):
         attn_weights = torch.matmul(q, k.transpose(2, 1)) 
