@@ -121,14 +121,14 @@ class AverageMeterDict:
         return avg
 
 
-def get_eval_steps(eval_freq, total_batches):
+def get_eval_steps(eval_freq, total_batches, acc_steps):
     """
     Determine number of steps that trigger evaluatiuon
     """ 
     if eval_freq == "epoch":
         eval_steps = total_batches
     elif isinstance(eval_freq, int):
-        eval_steps = eval_freq
+        eval_steps = eval_freq * acc_steps
     elif isinstance(eval_freq, float):
         eval_steps = int(total_batches * eval_freq)
     

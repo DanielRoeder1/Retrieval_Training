@@ -64,7 +64,7 @@ def load_model(args, device):
 
 def get_logging_vars(args, num_batches):
     print_every = args.logging.print_freq  * args.training.accumulation_steps
-    eval_every = get_eval_steps(args.evaluation.eval_freq,num_batches)
+    eval_every = get_eval_steps(args.evaluation.eval_freq,args.training.accumulation_steps,num_batches)
     return print_every, num_batches, eval_every
 
 def save_model(model, path, epoch, i, avg_loss):
