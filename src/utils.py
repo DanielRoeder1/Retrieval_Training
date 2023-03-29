@@ -39,7 +39,7 @@ def load_args():
     if args.evaluation.eval_accumulation < 1: args.evaluation.eval_accumulation = 1
     if args.training.use_torch_compile: assert torch.__version__ >= "2.0", "Torch version must be greater than 2.0 to use torch.compile(),install torch > 2.0 or diable in config"
     assert args.training.mode in ["bi-encoder", "poly-encoder"], "Invalid model type"
-    assert args.q_model.path == '', "Must provide query model name, for Siamese networks only the q_model is used"
+    assert args.q_model.path != '', "Must provide query model name, for Siamese networks only the q_model is used"
     return args
 
 

@@ -12,9 +12,10 @@ from utils import get_time, get_eval_steps
 import os
 
 def get_data_loaders(args, q_tokenizer, d_tokenizer, shuffle = True):
+  print(f"[{get_time()}] [LOG]: Loading data from {args.paths.dataset_path}")
   data = load_from_disk(args.paths.dataset_path)
   collate_fn = outer_collate(q_tokenizer, d_tokenizer)
-  train_loader = DataLoader(data["train"], batch_size = args.train.batch_size, shuffle = shuffle, collate_fn = collate_fn)
+  train_loader = DataLoader(data["train"], batch_size = args.training.batch_size, shuffle = shuffle, collate_fn = collate_fn)
   val_loader = DataLoader(data["test"], batch_size = args.evaluation.batch_size, shuffle = shuffle, collate_fn = collate_fn)
   return train_loader, val_loader
 

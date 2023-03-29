@@ -21,7 +21,7 @@ class PolyEncoderWrapper(torch.nn.Module):
         q_embeds = self.q_model(q_inputs, d_embeds)
         q_embeds = q_embeds.reshape(-1, q_embeds.shape[-1])
         loss = self.loss_func(embeddings = d_embeds,ref_emb = q_embeds,  indices_tuple = self.indices_tuples)
-        return loss if self.training else loss, q_embeds, d_embeds
+        return loss if self.training else (loss, q_embeds, d_embeds)
         
     def get_indices_tuple(self, num_doc, num_pos):
         """
@@ -50,8 +50,8 @@ class BiEncoderWrapper(torch.nn.Module):
 
     def __call__(self, inputs):
         q_inputs, d_inputs = inputs
-        q_embeds = self.q_model(**q_inputs)
-        d_embeds = self.d_model(**d_inputs)
+        q_embeds = self.q_model(q_inputs)
+        d_embeds = self.d_model(d_inputs)
         loss = self.loss_func(q_embeds, d_embeds)
-        return loss if self.training else loss, q_embeds, d_embeds
+        return loss if self.training else (loss, q_embeds, d_embeds)
 

@@ -47,7 +47,7 @@ class Evaluator:
         self.av_val_acc = AverageMeterDict()    
         self.acc_calc = CustomAccuracyCalc(exclude=("AMI","NMI"), device = faiss_device)
         self.val_loader = val_loader
-        self.devie = device
+        self.device = device
         self.args = args
     
     def reset(self):

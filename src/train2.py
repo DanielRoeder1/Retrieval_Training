@@ -2,7 +2,7 @@ import torch
 import wandb
 from torch.cuda.amp import GradScaler
 from torch import autocast
-from utils import load_args, AverageMeter, get_eval_steps, get_time, AverageMeterDict
+from utils import load_args, AverageMeter, get_time
 from training_utils import get_data_loaders, load_model,get_logging_vars, save_model
 from evaluation import Evaluator
 
