@@ -21,7 +21,7 @@ def load_args():
         args = load_config(args.config_path)
         args.config_path = tmp
     
-    assert args.q_model.path is not None, "Must provide query model name, for Siamese networks only the q_model is used"
+   
     #Config params automatically set 
     #args.training.eval_freq = determine_type(args.training.eval_freq)
 
@@ -34,9 +34,12 @@ def load_args():
             # Have config in dict format again for wandb
             with open(args.config_path, 'r') as f:
                 args.wandb_config = yaml.safe_load(f)
+    if args.d_model.path == "": args.d_model.path = None
     if args.training.accumulation_steps < 1: args.training.accumulation_steps = 1
     if args.evaluation.eval_accumulation < 1: args.evaluation.eval_accumulation = 1
     if args.training.use_torch_compile: assert torch.__version__ >= "2.0", "Torch version must be greater than 2.0 to use torch.compile(),install torch > 2.0 or diable in config"
+    assert args.training.mode in ["bi-encoder", "poly-encoder"], "Invalid model type"
+    assert args.q_model.path == '', "Must provide query model name, for Siamese networks only the q_model is used"
     return args
 
 
@@ -57,101 +60,17 @@ def _construct_mapping(loader, node):
 Loader.add_constructor(
     yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _construct_mapping
 )
-#
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
-
     parser.add_argument(
         "--config_path",
         type=str,
         default = None,
         help = "If path provided will use config to overwrite args, pass 'path'|'default'"
     )
-
-    parser.add_argument(
-        "--q_model_name", 
-        type=str, 
-        default = None, 
-        help = "Enter the HF name of the model to be used for query encoding")
-    
-    parser.add_argument(
-        "--d_model_name",
-        type=str,
-        default = None,
-        help = "Enter the HF name of the model to be used for document encoding"
-    )
-
-    parser.add_argument(
-        "--dataset_path",
-        type=str,
-        default = r'C:\Users\Daniel\Documents\RAG_thesis\data\train.csv',
-        help = "Enter the path to the dataset (csv file)"
-    )
-
-    parser.add_argument(
-        "--batch_size",
-        type=int,
-        default = 32,
-        help = "Enter the batch size"
-    )
-
-    parser.add_argument(
-        "--epochs",
-        type=int,
-        default = 5,
-        help = "Enter the number of epochs"
-    )
-
-    parser.add_argument(
-        "--lr",
-        type=float,
-        default = 1e-5,
-        help = "Enter the learning rate"
-    )
-
-    parser.add_argument(
-        "--mode",
-        type=str,
-        default = None,
-        help = "Enter the mode of the model, either 'bi-encoder' or 'poly-encoder'"
-    )
-
-    parser.add_argument(
-        "--save_path",
-        type=str,
-        default = None,
-        help = "Enter the path to save the model"
-    )
-
-    parser.add_argument(
-        "--print_freq",
-        type=int,
-        default = 100,
-        help = "Enter the frequency of printing the loss"
-    )
-
-    parser.add_argument(
-        "--eval_freq",
-        type=str,
-        default = "epoch",
-        help = "Enter the frequency of evaluation, either 'epoch' or a number of steps, or a float between 0 and 1"
-    )
-
-    parser.add_argument(
-        "--cross_batch_memory",
-        type=bool,
-        default = False,
-        help = "Enter whether to use cross batch memory"
-    )
-
     args = parser.parse_args()
-
-    if args.dataset_path is not None:
-        assert args.dataset_path.endswith(".csv"), "train_file should be a csv file"
-    else:
-        raise ValueError("Need to specify a dataset path")
-    
     return args
 ############################################
 
