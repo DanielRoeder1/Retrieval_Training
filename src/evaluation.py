@@ -32,9 +32,9 @@ def cosine_ranking(q_embed, doc_embed, num_pos):
     b = torch.nn.functional.normalize(doc_embed, dim = 1)
     index_gt = torch.arange(q_embed.shape[0] // num_pos).repeat_interleave(num_pos)
     cos_sim = torch.sum(a*b, dim=-1)
-    ranking = cos_sim.argsort()
-    _, rank = torch.where(ranking == index_gt.unsqueeze(1))
-    return rank
+    ranking = cos_sim.argsort(descending=True)
+    _, rank = torch.where(ranking.to("cpu") == index_gt.unsqueeze(1))
+    return rank.float()
     
 
 class Evaluator:
@@ -86,7 +86,7 @@ class Evaluator:
             pool_inputs.to(self.device)
             with autocast(device_type='cuda', dtype=torch.float16):
                 with torch.no_grad():
-                    pool_emb = model.pool_enc(pool_inputs)
+                    pool_emb = model.d_model(pool_inputs)
                     self.d_buff.add(pool_emb)
                     
             if (i+1) % self.args.evaluation.eval_accumulation == 0:
@@ -96,11 +96,11 @@ class Evaluator:
                     cond_inputs.to(self.device)
                     with autocast(device_type='cuda', dtype=torch.float16):
                         with torch.no_grad():
-                            cond_emb = model.cond_enc(cond_inputs, pool_embed)
+                            cond_emb = model.q_model(cond_inputs, pool_embed)
                             ranks = cosine_ranking(cond_emb, pool_embed, self.args.training.num_pos)
-                            indices_tuple = model.get_indices_tuple(pool_inputs.shape[0],self.args.training.num_pos)
-                            cond_loss_embed = cond_emb[:,:pool_inputs.shape[0],:]
-                            pool_loss_embed = pool_embed[:pool_inputs.shape[0],:]
+                            indices_tuple = model.get_indices_tuple(self.args.evaluation.batch_size,self.args.training.num_pos)
+                            cond_loss_embed = cond_emb[:,:self.args.evaluation.batch_size,:].reshape(-1,cond_emb.shape[-1])
+                            pool_loss_embed = pool_embed[:self.args.evaluation.batch_size,:]
                             loss = model.loss_func(embeddings= pool_loss_embed, indices_tuple= indices_tuple, ref_emb = cond_loss_embed)
                             self.av_val.update(loss.item())
                             self.av_val_acc.update({"mean_rank_first":ranks.mean().item()})

@@ -54,7 +54,7 @@ def load_model(args, device):
     d_model.resize_token_embeddings(len(d_tokenizer))
 
     assert q_model.config.hidden_size == d_model.config.hidden_size, "Query and document encoders must have the same hidden size"
-    model = model(d_model, q_model, args)
+    model = model(q_model, d_model, args)
 
     if args.training.use_torch_compile:
         model.q_model = torch.compile(model.q_model)

@@ -121,7 +121,7 @@ class AverageMeterDict:
         return avg
 
 
-def get_eval_steps(eval_freq, total_batches, acc_steps):
+def get_eval_steps(eval_freq, acc_steps,total_batches):
     """
     Determine number of steps that trigger evaluatiuon
     """ 
