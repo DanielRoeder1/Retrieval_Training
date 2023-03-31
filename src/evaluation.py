@@ -2,6 +2,9 @@ from utils import get_time,AverageMeter, AverageMeterDict
 from loss import CustomAccuracyCalc
 from torch import autocast
 
+import faiss
+from pytorch_metric_learning.utils.inference import FaissKNN
+
 import torch
 class EmbedBuffer:
     def __init__(self, buffer_size, embedding_size, device):
@@ -44,8 +47,10 @@ class Evaluator:
         self.d_buff = EmbedBuffer(d_buff_size, hidden_size, device)
         self.q_buff = EmbedBuffer(q_buff_size, hidden_size, device)
         self.av_val = AverageMeter()
-        self.av_val_acc = AverageMeterDict()    
-        self.acc_calc = CustomAccuracyCalc(exclude=("AMI","NMI"), device = faiss_device)
+        self.av_val_acc = AverageMeterDict()   
+        # Use inner prodcut instead of default L2 
+        custom_knn = FaissKNN(index_init_fn=faiss.IndexFlatIP)
+        self.acc_calc = CustomAccuracyCalc(exclude=("AMI","NMI"), device = faiss_device,  knn_func = custom_knn)
         self.val_loader = val_loader
         self.device = device
         self.args = args
