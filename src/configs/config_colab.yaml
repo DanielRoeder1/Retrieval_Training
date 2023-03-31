@@ -6,7 +6,7 @@ q_model:
   special_tokens: []
   model_args: {"num_poly_codes": 100}
 d_model:
-  path: ''
+  path: "sentence-transformers/all-distilroberta-v1"
   special_tokens: ["Section::::", "BULLET::::"]
   model_args: {}
 training:
@@ -29,6 +29,6 @@ cross_batch_memory:
   buffer_size: 160
   warmup: 1000
 wandb:
-  use: True
+  use: False
   credential_path: 'default'
   project_name: 'retrieval_training'
