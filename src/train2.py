@@ -14,7 +14,7 @@ def train(args):
     faiss_device = torch.device(args.evaluation.faiss_device)
 
     model, q_tokenizer, d_tokenizer, optimizer = load_model(args, device)
-    train_loader, val_loader = get_data_loaders(args, q_tokenizer, d_tokenizer, True)
+    train_loader, val_loader = get_data_loaders(args, q_tokenizer, d_tokenizer, False)
     print_every, num_batches, eval_every = get_logging_vars(args, len(train_loader))
     eval = Evaluator(args, val_loader, device, faiss_device, model.q_model.config.hidden_size)
     eval_func = getattr(eval, model.eval_type)

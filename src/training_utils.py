@@ -11,7 +11,7 @@ from torch.optim import AdamW
 from utils import get_time, get_eval_steps
 import os
 
-def get_data_loaders(args, q_tokenizer, d_tokenizer, shuffle = True):
+def get_data_loaders(args, q_tokenizer, d_tokenizer, shuffle = False):
   print(f"[{get_time()}] [LOG]: Loading data from {args.paths.dataset_path}")
   data = load_from_disk(args.paths.dataset_path)
   collate_fn = outer_collate(q_tokenizer, d_tokenizer)
@@ -41,7 +41,7 @@ def load_model(args, device):
 
     # Document Encoder
     if args.d_model.path is None:
-        print(f"[{get_time()}] [LOG]: Using the same encoder for query and document")
+        print(f"[{get_time()}] [LOG]: Using the same encoder for query and documenty")
         d_model = d_model(q_model.config, q_model.enc_model).to(device)
         d_tokenizer = q_tokenizer
         optimizer = AdamW(q_model.parameters(), lr = args.training.lr)
