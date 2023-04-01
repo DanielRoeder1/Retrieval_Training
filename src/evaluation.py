@@ -6,10 +6,12 @@ import faiss
 from pytorch_metric_learning.utils.inference import FaissKNN
 
 import torch
+
 class EmbedBuffer:
-    def __init__(self, buffer_size, embedding_size, device):
-        self.buffer_size = buffer_size
-        self.buffer = torch.zeros((self.buffer_size, embedding_size)).to(device)
+    def __init__(self, buffer_dim, device):
+        self.buffer_size = buffer_dim[0]
+        self.buffer = torch.zeros(buffer_dim).to(device)
+        self.reset()
         
     def add(self, embeds):
         batch_size = embeds.shape[0]
@@ -24,28 +26,29 @@ class EmbedBuffer:
     def get(self):
         return self.buffer[:self.max_fill_idx]
     
-def cosine_ranking(q_embed, doc_embed, num_pos):
+def cosine_ranking(q_embed, doc_embed, num_pos, i = 0):
     """
     q_embed: (num_query, num_doc, dim)
     doc_embed: (num_doc, dim)
     num_pos: queries per doc 
     Assumes that the first num_pos queries relate to doc 0 ...
     """
+    q_docs = q_embed.shape[0] // num_pos
     a = torch.nn.functional.normalize(q_embed, dim = 2)
     b = torch.nn.functional.normalize(doc_embed, dim = 1)
-    index_gt = torch.arange(q_embed.shape[0] // num_pos).repeat_interleave(num_pos)
+    index_gt = torch.arange(q_docs).repeat_interleave(num_pos) + i *q_docs
     cos_sim = torch.sum(a*b, dim=-1)
     ranking = cos_sim.argsort(descending=True)
     _, rank = torch.where(ranking.to("cpu") == index_gt.unsqueeze(1))
-    return rank.float()
+    return rank.float()+1
     
 
 class Evaluator:
     def __init__(self, args, val_loader, device, faiss_device, hidden_size):
         d_buff_size = args.evaluation.eval_accumulation * args.evaluation.batch_size
         q_buff_size = d_buff_size * args.training.num_pos
-        self.d_buff = EmbedBuffer(d_buff_size, hidden_size, device)
-        self.q_buff = EmbedBuffer(q_buff_size, hidden_size, device)
+        self.d_buff = EmbedBuffer((d_buff_size, hidden_size), device)
+        self.q_buff = EmbedBuffer((q_buff_size, hidden_size), device)
         self.av_val = AverageMeter()
         self.av_val_acc = AverageMeterDict()   
         # Use inner prodcut instead of default L2 
