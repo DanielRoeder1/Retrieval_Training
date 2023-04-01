@@ -105,7 +105,7 @@ class Evaluator:
                     with autocast(device_type='cuda', dtype=torch.float16):
                         with torch.no_grad():
                             cond_emb = model.q_model(cond_inputs, pool_embed)
-                            ranks = cosine_ranking(cond_emb, pool_embed, self.args.training.num_pos)
+                            ranks = cosine_ranking(cond_emb, pool_embed, self.args.training.num_pos, i)
                             indices_tuple = model.get_indices_tuple(self.args.evaluation.batch_size,self.args.training.num_pos)
                             cond_loss_embed = cond_emb[:,:self.args.evaluation.batch_size,:].reshape(-1,cond_emb.shape[-1])
                             pool_loss_embed = pool_embed[:self.args.evaluation.batch_size,:]
