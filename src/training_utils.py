@@ -1,6 +1,6 @@
 from datasets import load_from_disk
 from torch.utils.data import DataLoader
-from SectionSampling import outer_collate
+from data_scripts.SectionSampling import outer_collate
 
 from transformers import AutoTokenizer
 from model import PooledEncoder, PolyEncoder
@@ -63,6 +63,9 @@ def load_model(args, device):
     return model, q_tokenizer, d_tokenizer, optimizer
 
 def get_logging_vars(args, num_batches):
+    """
+    Returns vars for triggering logging and evaluation
+    """
     print_every = args.logging.print_freq  * args.training.accumulation_steps
     eval_every = get_eval_steps(args.evaluation.eval_freq,args.training.accumulation_steps,num_batches)
     return print_every, num_batches, eval_every

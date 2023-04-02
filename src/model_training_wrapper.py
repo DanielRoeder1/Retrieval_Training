@@ -1,8 +1,7 @@
-import torch
-from test_loss import CustomNTXentLoss
+import torch 
 import numpy as np
 
-from loss import CrossBatchMemoryWrapper, LabelLossWrapper
+from loss import CrossBatchMemoryWrapper, LabelLossWrapper,CustomNTXentLoss
 from pytorch_metric_learning import losses 
 
 class PolyEncoderWrapper(torch.nn.Module):

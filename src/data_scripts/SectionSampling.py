@@ -72,7 +72,3 @@ def outer_collate(tokenizer_doc, tokenizer_query):
     query = tokenizer_query.pad(query, return_attention_mask=True, return_tensors="pt")
     return query, doc
   return collate_fn
-
-def get_data_loader(dataset, tokenizer1, tokenizer2, batch_size, shuffle = True):
-  collate_fn = outer_collate(tokenizer1, tokenizer2)
-  return DataLoader(dataset, batch_size = batch_size, shuffle = shuffle, collate_fn = collate_fn)
