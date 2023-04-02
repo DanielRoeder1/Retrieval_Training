@@ -74,17 +74,6 @@ def parse_args():
     return args
 ############################################
 
-def determine_type(str_in):
-    """
-    eval_freq argument can be either a number of steps, a float between 0 and 1, or "epoch"
-    """
-    if str_in.isdigit():
-        return int(str_in)
-    elif str_in.replace('.', '', 1).isdigit():
-        return float(str_in)
-    else:
-        return str_in
-
 class AverageMeter:
     """Computes and stores the average and current value"""
     def __init__(self):
