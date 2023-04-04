@@ -11,10 +11,11 @@ class SectionSampler:
   Anchors are extracted from sufficiently long Wikiepedia sections
   Positives are samples from the corresponding sections as well as the first section of the Wiki article -> general information
   """
-  def __init(self):
+  def __init__(self):
     self.min_sec_len = 300
     self.max_sec_len = 450
-    self.min_pos_len = 40
+    self.min_pos_len = 10
+    self.max_pos_len = 40
     self.num_positives = 2
 
   def extract_sections(self, text, pattern = "Section::::[\w ]+\.\\n"):
@@ -33,19 +34,19 @@ class SectionSampler:
     for entry in tqdm(dataset["train"]):
         full_text = " ".join(entry["text"])
         section_gen = self.extract_sections(full_text)
-        init_positive = " ".join(next(section_gen).split()[:np.random.randint(self.min_pos_len,100)])
-        init_positive = self.clean_positives(init_positive)
+        first_section = next(section_gen)
 
         for sec in section_gen:
             sec_tokens = sec.split()
             sec_len = len(sec_tokens)
 
             if sec_len > self.min_sec_len:
+                init_positive = self.clean_positives(" ".join(first_section.split()[:np.random.randint(self.min_pos_len,self.max_pos_len)]))
                 positives = [init_positive]
                 sec_split= min(self.max_sec_len,sec_len //2)
                 anchor = " ".join(sec_tokens[:sec_split])
                 for _ in range(self.num_positives):
-                    positive_len = int(np.random.beta(2, 4) * (sec_split - self.min_pos_len) + self.min_pos_len)
+                    positive_len = int(np.random.beta(2, 4) * (self.max_pos_len - self.min_pos_len) + self.min_pos_len)
                     positive_start = np.random.randint(0, sec_len - positive_len+1)
                     pos = " ".join(sec_tokens[positive_start:positive_start + positive_len])
                     positives.append(self.clean_positives(pos))
