@@ -1,4 +1,4 @@
-# Retrieval Pre-Training
+# Retrieval training pipeline
 
 ![alt text](https://github.com/DanielRoeder1/RAG_thesis/blob/main/visualization/thesis_diagram.drawio.png?raw=true)
 
@@ -18,5 +18,5 @@ ToDos:
 - Support torch.compile() (currently seems to slow down training)
 
 Usage:
-Adapt parameters in config.yaml and run train.py with --config_path set. 
+- Adapt parameters in config.yaml and run train.py with --config_path set. 
 (if not set config_colab from configs folder is used by default)
