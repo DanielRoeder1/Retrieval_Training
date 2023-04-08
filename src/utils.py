@@ -67,8 +67,8 @@ def parse_args():
     parser.add_argument(
         "--config_path",
         type=str,
-        default = None,
-        help = "If path provided will use config to overwrite args, pass 'path'|'default'"
+        default = 'colab',
+        help = "Provide path to config.yaml if not provided config_colab.yaml will be used"
     )
     args = parser.parse_args()
     return args

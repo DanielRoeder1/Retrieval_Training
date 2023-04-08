@@ -6,6 +6,7 @@
 #### Q_model:
 - path: Hugginface name or local path to query encoder model (required) (str)
 - special_tokens: The special tokens that are supposed to be addded to the tokenizer List(str)
+- model_args: Additional arguments set for the specific model (dct)
 #### D_model:
 - see q_model with the difference that it is not required
 #### Training:
@@ -24,11 +25,11 @@
 #### Logging:
 - print_freq: How often to log the loss (both printing and wandb). Note that this relates to gradient update steps. Thus if accumulations_steps = 5 and print_freq = 5 then the loss will be logged each 25 steps. (int)
 #### CrossBatchMemory:
-- use: Whether to use CrossBatchMemory (bool)
+- use: Whether to use CrossBatchMemory(not available for Poly-Encoder) (bool) 
 - buffer_size: How big the buffer of the cross batch memory is (int)
 - warmup: The number of gradient update steps that need to be executed before the buffer is filled (suggested by paper) (int)
 #### Wandb:
 - use: Whether to use wandb for reporting (bool)
-- credential_path: Path to a txt file that contains the wandb api key of the user (str)
+- credential_path: Path to a txt file that contains the wandb api key of the user.If set to 'default' checks for wandb_key.txt in configs folder. (str)
 - project_name: The project name that the wandb logging related to (str)
 
